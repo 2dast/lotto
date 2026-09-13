@@ -35,14 +35,24 @@
   .footnote { font-size: 12px; font-weight: 500; line-height: 1.4; color: var(--text-tertiary); margin-top: 24px; }
   .table-numeric { font-variant-numeric: tabular-nums; }
 
-  .layout { display: flex; height: 100vh; }
+  .top-nav {
+    height: 56px; flex: none; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; background: var(--white); border-bottom: 1px solid var(--border-secondary);
+  }
+  .top-nav .title-1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+  .top-nav .caption { margin: 0; }
+
+  .layout { display: flex; height: calc(100vh - 56px); }
   .sidebar { width: 260px; flex: none; overflow-y: auto; border-right: 1px solid var(--border-secondary); background: var(--grey-50); }
-  .sidebar-title { height: 56px; display: flex; align-items: center; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; padding: 0 16px; margin: 0; border-bottom: 1px solid var(--border-secondary); }
+  .sidebar-title { font-size: 12px; font-weight: 700; color: var(--text-tertiary); letter-spacing: 0.02em; padding: 16px 16px 8px; margin: 0; }
   .sidebar > ul { list-style: none; margin: 0; padding: 8px 8px 12px; }
   .home-link {
     display: block; padding: 8px 12px; margin: 8px 8px 6px; border-radius: 12px;
-    font-size: 15px; font-weight: 600; color: var(--blue-500); text-decoration: none; background: var(--blue-50);
+    font-size: 15px; font-weight: 600; color: var(--text-secondary); text-decoration: none;
+    border-left: 3px solid transparent;
   }
+  .home-link:hover { background: var(--grey-100); }
+  .home-link.active { background: var(--blue-50); color: var(--blue-500); border-left-color: var(--blue-500); }
 
   .draw-group { margin-bottom: 2px; }
   .draw-group.is-hidden { display: none; }
@@ -54,9 +64,9 @@
   .draw-count { font-size: 10.5px; color: var(--text-secondary); background: var(--grey-100); border-radius: 999px; padding: 1px 7px; }
   .draw-body { list-style: none; margin: 0; padding: 0; max-height: 0; overflow: hidden; transition: max-height 200ms cubic-bezier(0.16,1,0.3,1); }
   .draw-body[data-open="true"] { max-height: 400px; }
-  .draw-body li a { display: block; padding: 6px 10px 6px 30px; font-size: 12.5px; text-decoration: none; color: var(--text-secondary); border-radius: 12px; margin: 1px 4px; }
+  .draw-body li a { display: block; padding: 6px 10px 6px 27px; font-size: 12.5px; text-decoration: none; color: var(--text-secondary); border-radius: 12px; margin: 1px 4px; border-left: 3px solid transparent; }
   .draw-body li a:hover { background: var(--grey-100); }
-  .draw-body li a.active { background: var(--blue-500); color: var(--white); font-weight: 600; }
+  .draw-body li a.active { background: var(--blue-50); color: var(--blue-500); font-weight: 600; border-left-color: var(--blue-500); }
 
   .main { flex: 1; overflow-y: auto; }
   #dashboard-view { max-width: 640px; margin: 0 auto; padding: 24px 20px 60px; }
@@ -90,12 +100,16 @@
   }
   .accuracy-badge.dim { background: var(--grey-100); color: var(--text-secondary); }
 
-  iframe { width: 100%; height: 100%; border: none; }
+  iframe { display: block; width: 100%; height: 100%; border: none; }
 </style>
+<header class="top-nav">
+  <span class="title-1">로또 대시보드</span>
+  <span class="caption">1242회차 예측 기준</span>
+</header>
 <div class="layout">
   <nav class="sidebar">
-    <h1 class="sidebar-title">로또 대시보드</h1>
-    <a href="#" id="home-link" class="home-link">대시보드 홈</a>
+    <h1 class="sidebar-title">리포트 목록</h1>
+    <a href="#" id="home-link" class="home-link active">대시보드 홈</a>
     <ul id="group-list">
         <li class="draw-group">
           <button class="draw-header" type="button" aria-expanded="true">
@@ -112,17 +126,21 @@
           <button class="draw-header" type="button" aria-expanded="false">
             <span class="chevron">&#9656;</span>
             <span class="draw-label">1241회차 예측</span>
-            <span class="draw-count">9</span>
+            <span class="draw-count">13</span>
           </button>
           <ul class="draw-body">
             <li><a href="#" data-src="reports/lotto_report_20260913_153259.html">2026-09-13 15:32</a></li>
             <li><a href="#" data-src="reports/lotto_report_20260913_152221.html">2026-09-13 15:22</a></li>
             <li><a href="#" data-src="reports/lotto_report_20260913_152045.html">2026-09-13 15:20</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_151957.html">2026-09-13 15:19</a></li>
             <li><a href="#" data-src="reports/lotto_report_20260913_151435.html">2026-09-13 15:14</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_151335.html">2026-09-13 15:13</a></li>
             <li><a href="#" data-src="reports/lotto_report_20260913_150525.html">2026-09-13 15:05</a></li>
             <li><a href="#" data-src="reports/lotto_report_20260913_150128.html">2026-09-13 15:01</a></li>
             <li><a href="#" data-src="reports/lotto_report_20260913_145635.html">2026-09-13 14:56</a></li>
             <li><a href="#" data-src="reports/lotto_report_20260913_145150.html">2026-09-13 14:51</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_145050.html">2026-09-13 14:50</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_141548.html">2026-09-13 14:15</a></li>
             <li><a href="#" data-src="reports/lotto_report_20260913_054851.html">2026-09-13 05:48</a></li>
           </ul>
         </li>
@@ -191,16 +209,11 @@
       });
     })();
 
-document.querySelectorAll('.draw-header').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const open = btn.getAttribute('aria-expanded') === 'true';
-    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
-    btn.nextElementSibling.setAttribute('data-open', open ? 'false' : 'true');
-  });
-});
-
 const dashboardView = document.getElementById('dashboard-view');
 const viewer = document.getElementById('viewer');
+
+const homeLink = document.getElementById('home-link');
+const navLinks = [homeLink, ...document.querySelectorAll('.draw-body a')];
 
 document.querySelectorAll('.draw-body a').forEach(a => {
   a.addEventListener('click', (e) => {
@@ -208,15 +221,30 @@ document.querySelectorAll('.draw-body a').forEach(a => {
     viewer.src = a.dataset.src;
     viewer.hidden = false;
     dashboardView.hidden = true;
-    document.querySelectorAll('.draw-body a').forEach(el => el.classList.remove('active'));
+    navLinks.forEach(el => el.classList.remove('active'));
     a.classList.add('active');
   });
 });
 
-document.getElementById('home-link').addEventListener('click', (e) => {
+document.querySelectorAll('.draw-header').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    const body = btn.nextElementSibling;
+    body.setAttribute('data-open', open ? 'false' : 'true');
+    // 그룹을 펼칠 때는 그 안의 최신 리포트(맨 위 항목)를 바로 선택해서 보여준다.
+    if (!open) {
+      const firstLink = body.querySelector('a');
+      if (firstLink) firstLink.click();
+    }
+  });
+});
+
+homeLink.addEventListener('click', (e) => {
   e.preventDefault();
   viewer.hidden = true;
   dashboardView.hidden = false;
-  document.querySelectorAll('.draw-body a').forEach(el => el.classList.remove('active'));
+  navLinks.forEach(el => el.classList.remove('active'));
+  homeLink.classList.add('active');
 });
 </script>
