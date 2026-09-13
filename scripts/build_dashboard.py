@@ -11,7 +11,6 @@ import json
 from pathlib import Path
 
 from build_index import list_reports
-from predict import load_rules
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_PATH = ROOT / "data" / "draws.json"
@@ -69,17 +68,6 @@ def next_draw_date_label(latest_draw: dict) -> str:
     return f"다음 추첨 {next_date.isoformat()} (결과 반영 대기)"
 
 
-def rules_summary_line(rules: dict) -> str:
-    f = rules["pattern_filters"]
-    odd_lo, odd_hi = f["odd_even_ratio"]
-    sum_lo, sum_hi = f["sum_range"]
-    zone_bits = ", ".join(f'{z["range"][0]}~{z["range"][1]}: {z["min"]}~{z["max"]}개' for z in f["zones"])
-    return (
-        f'홀수 {odd_lo}~{odd_hi}개 · 합계 {sum_lo}~{sum_hi} · 연속 최대 {f["max_consecutive"]}개'
-        + (f' · 구간별({zone_bits})' if zone_bits else "")
-    )
-
-
 def recent_draws_rows(draws: list[dict], n: int = 5) -> str:
     rows = []
     for d in reversed(draws[-n:]):
@@ -105,7 +93,6 @@ def render_summary(
     pred_filename: str,
     pred_data: dict,
     all_predictions: list[dict],
-    rules_line: str,
     dday_label: str,
     generated_at_label: str,
 ) -> tuple[str, str]:
@@ -128,12 +115,9 @@ def render_summary(
     predictions_json = json.dumps(all_predictions, ensure_ascii=False)
     draws_by_no_json = json.dumps({d["drwNo"]: d["numbers"] for d in draws}, ensure_ascii=False)
 
-    rules_line_json = json.dumps(rules_line, ensure_ascii=False)
-
     shared_script = f"""
     const PREDICTIONS = {predictions_json};
     const DRAWS_BY_NO = {draws_by_no_json};
-    const RULES_LINE = {rules_line_json};
     const BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"];
 
     function ballHtml(n, hit) {{
@@ -149,7 +133,6 @@ def render_summary(
     const fileSelect = document.getElementById('file-select');
     const predList = document.getElementById('pred-list');
     const predSummary = document.getElementById('pred-summary');
-    const predFileCaption = document.getElementById('pred-file-caption');
     const predTitle = document.getElementById('pred-title');
 
     function filesForRound(round) {{
@@ -167,7 +150,6 @@ def render_summary(
       const entry = PREDICTIONS.find(p => p.next_draw === Number(round) && p.file === filename);
       if (!entry) return;
       predTitle.textContent = `${{entry.next_draw}}회차 예측`;
-      predFileCaption.textContent = `예측 파일: ${{entry.file}} · 스크리닝 조건: ${{RULES_LINE}}`;
 
       const actualNumbers = DRAWS_BY_NO[entry.next_draw];
       if (actualNumbers) {{
@@ -219,7 +201,6 @@ def render_summary(
         </div>
         <p class="body-1" id="pred-summary" style="margin:0 0 10px"></p>
         <ul class="pred-list" id="pred-list"></ul>
-        <p class="caption" id="pred-file-caption">예측 파일: {pred_filename} · 스크리닝 조건: {rules_line}</p>
       </section>
 
       <section class="card">
@@ -273,13 +254,12 @@ def main() -> None:
     pred_filename, pred_data = load_latest_predictions()
     reports = list_reports()
     all_predictions = load_all_predictions()
-    rules_line = rules_summary_line(load_rules())
     dday_label = next_draw_date_label(latest_draw)
     generated_at_label = dt.datetime.now(KST).strftime("%Y-%m-%d %H:%M")
 
     summary_html, shared_script = render_summary(
         draws, latest_draw, pred_filename, pred_data, all_predictions,
-        rules_line, dday_label, generated_at_label,
+        dday_label, generated_at_label,
     )
     sidebar_html = render_sidebar(reports)
     next_draw_label = f'{pred_data["based_on_drwNo"] + 1}회차 예측 기준'
