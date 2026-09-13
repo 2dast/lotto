@@ -1,51 +1,39 @@
-# 예측 조건 (RULES.md)
+# 예측 조건
 
-이 문서는 `predict.py`가 실제로 읽어서 적용하는 예측 조건입니다.
-조건을 바꾸려면 아래 설명과 `yaml` 코드블록을 함께 수정하세요 (코드블록만 파싱됩니다).
+한 줄에 조건 하나씩 적습니다. `#`으로 시작하면 주석(무시)입니다.
+조건을 추가/삭제/수정할 때는 이 줄들만 건드리면 됩니다 — `predict.py`가 매번 새로 읽어서 해석합니다.
 
-## 조건 설명
-
-- 홀짝 비율: 홀수 개수 2~4개 (짝수는 나머지)
-- 연속번호: 최대 2개까지만 허용 (예: 12,13은 허용, 12,13,14는 불허)
-- 총합 범위: 6개 번호 합이 100~170 사이
-- 구간별 개수:
-  - 1-9번대: 0~3개
-  - 10-19번대: 0~3개
-  - 20-29번대: 0~3개
-  - 30-39번대: 0~3개
-  - **40-45번대: 반드시 1개 포함 (최소1, 최대1)**
-- 예측 세트 수: 5세트
-
-## 규칙 정의 (predict.py가 읽는 블록)
-
-```yaml
-frequency:
-  all_time_weight: 0.4
-  recent_weight: 0.6
-  recent_window: 20
-
-pattern_filters:
-  odd_even_ratio: [2, 4]
-  max_consecutive: 2
-  sum_range: [100, 170]
-  zones:
-    - range: [1, 9]
-      min: 0
-      max: 3
-    - range: [10, 19]
-      min: 0
-      max: 3
-    - range: [20, 29]
-      min: 0
-      max: 3
-    - range: [30, 39]
-      min: 0
-      max: 3
-    - range: [40, 45]
-      min: 1
-      max: 1
-
-num_predictions: 5
-exclude_numbers: []
-include_numbers: []
 ```
+odd_even 2 4
+sum 100 170
+consecutive_max 2
+zone 1 9 min 0 max 3
+zone 10 19 min 0 max 3
+zone 20 29 min 0 max 3
+zone 30 39 min 0 max 3
+zone 40 45 min 1 max 1
+predictions 5
+freq_all_weight 0.4
+freq_recent_weight 0.6
+freq_recent_window 20
+```
+
+## 조건 종류 설명
+
+| 키워드 | 형식 | 의미 |
+|---|---|---|
+| `odd_even` | `odd_even <최소> <최대>` | 홀수 개수 허용 범위 (예: `2 4` = 홀수 2~4개) |
+| `sum` | `sum <최소> <최대>` | 6개 번호 합계 허용 범위 |
+| `consecutive_max` | `consecutive_max <n>` | 연속번호 최대 허용 개수 |
+| `zone` | `zone <시작> <끝> min <최소개수> max <최대개수>` | 특정 구간에서 뽑을 개수 강제 (min=max면 정확히 그 개수) |
+| `predictions` | `predictions <n>` | 생성할 예측 세트 수 |
+| `freq_all_weight` | `freq_all_weight <0~1>` | 전체 출현 빈도 가중치 |
+| `freq_recent_weight` | `freq_recent_weight <0~1>` | 최근 출현 빈도 가중치 |
+| `freq_recent_window` | `freq_recent_window <n>` | "최근"으로 볼 회차 수 |
+| `exclude` | `exclude <번호> [번호...]` | 예측에서 항상 제외할 번호 |
+| `include` | `include <번호> [번호...]` | 예측에 항상 포함할 번호 |
+
+### 예시: 조건 추가/수정
+- "40번대는 반드시 1개" → `zone 40 45 min 1 max 1` (이미 적용됨)
+- "1번대(1-9)는 아예 뽑지 말자" → `zone 1 9 min 0 max 0` 으로 수정
+- "7번은 항상 포함" → `include 7` 줄 추가

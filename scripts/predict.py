@@ -5,8 +5,6 @@ import random
 import re
 from pathlib import Path
 
-import yaml
-
 ROOT = Path(__file__).resolve().parent.parent
 RULES_PATH = ROOT / "RULES.md"
 DATA_PATH = ROOT / "data" / "draws.json"
@@ -14,13 +12,70 @@ OUTPUT_PATH = ROOT / "predictions.json"
 
 ALL_NUMBERS = list(range(1, 46))
 
+DEFAULT_ZONES = [(1, 9), (10, 19), (20, 29), (30, 39), (40, 45)]
+
+
+def _parse_rule_lines(lines: list[str]) -> dict:
+    zones = []
+    rules = {
+        "frequency": {"all_time_weight": 0.5, "recent_weight": 0.5, "recent_window": 20},
+        "pattern_filters": {
+            "odd_even_ratio": [0, 6],
+            "max_consecutive": 6,
+            "sum_range": [21, 255],
+            "zones": [],
+        },
+        "num_predictions": 5,
+        "exclude_numbers": [],
+        "include_numbers": [],
+    }
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        tokens = line.split()
+        keyword = tokens[0]
+
+        if keyword == "odd_even":
+            rules["pattern_filters"]["odd_even_ratio"] = [int(tokens[1]), int(tokens[2])]
+        elif keyword == "sum":
+            rules["pattern_filters"]["sum_range"] = [int(tokens[1]), int(tokens[2])]
+        elif keyword == "consecutive_max":
+            rules["pattern_filters"]["max_consecutive"] = int(tokens[1])
+        elif keyword == "zone":
+            # zone <start> <end> min <n> max <n>
+            zones.append({
+                "range": [int(tokens[1]), int(tokens[2])],
+                "min": int(tokens[4]),
+                "max": int(tokens[6]),
+            })
+        elif keyword == "predictions":
+            rules["num_predictions"] = int(tokens[1])
+        elif keyword == "freq_all_weight":
+            rules["frequency"]["all_time_weight"] = float(tokens[1])
+        elif keyword == "freq_recent_weight":
+            rules["frequency"]["recent_weight"] = float(tokens[1])
+        elif keyword == "freq_recent_window":
+            rules["frequency"]["recent_window"] = int(tokens[1])
+        elif keyword == "exclude":
+            rules["exclude_numbers"].extend(int(t) for t in tokens[1:])
+        elif keyword == "include":
+            rules["include_numbers"].extend(int(t) for t in tokens[1:])
+        else:
+            raise ValueError(f"알 수 없는 조건 키워드: {keyword!r} (줄: {raw_line!r})")
+
+    if zones:
+        rules["pattern_filters"]["zones"] = zones
+    return rules
+
 
 def load_rules(path: Path = RULES_PATH) -> dict:
     text = path.read_text(encoding="utf-8")
-    match = re.search(r"```yaml\n(.*?)```", text, re.DOTALL)
+    match = re.search(r"```\n(.*?)```", text, re.DOTALL)
     if not match:
-        raise ValueError("RULES.md에서 yaml 블록을 찾을 수 없습니다")
-    return yaml.safe_load(match.group(1))
+        raise ValueError("RULES.md에서 조건 코드블록을 찾을 수 없습니다")
+    return _parse_rule_lines(match.group(1).splitlines())
 
 
 def load_draws(path: Path = DATA_PATH) -> list[dict]:
