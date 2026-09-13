@@ -21,7 +21,7 @@ def find_latest_predictions_file(dir_path: Path = PREDICTIONS_DIR) -> Path:
 def build_block(data: dict) -> str:
     lines = [
         START_MARKER,
-        f"- 기준 회차: {data['based_on_drwNo']}회 이후 예측",
+        f"- {data['based_on_drwNo'] + 1}회차 예측",
         f"- 생성 시각: {data['generated_at']}",
         "",
     ]
