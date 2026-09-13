@@ -12,6 +12,8 @@ on:
       - "scripts/generate_report.py"
       - "scripts/build_index.py"
       - "scripts/predict.py"
+      - "scripts/track_accuracy.py"
+      - "scripts/build_dashboard.py"
 
 permissions:
   contents: write
@@ -35,6 +37,9 @@ jobs:
       - name: Collect latest draws
         run: python scripts/collect.py
 
+      - name: Track prediction accuracy
+        run: python scripts/track_accuracy.py
+
       - name: Generate predictions
         run: python scripts/predict.py
 
@@ -47,10 +52,13 @@ jobs:
       - name: Build report index
         run: python scripts/build_index.py
 
+      - name: Build dashboard
+        run: python scripts/build_dashboard.py
+
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f data/draws.json predictions/ README.md reports/
+          git add -f data/draws.json data/accuracy_history.json predictions/ README.md reports/ index.html
           git diff --cached --quiet || git commit -m "chore: update lotto data and predictions"
           git push

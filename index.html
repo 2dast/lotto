@@ -1,0 +1,119 @@
+<title>로또 대시보드</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Noto Sans KR", system-ui, sans-serif; color: #1c1c1c; }
+  .layout { display: flex; height: 100vh; }
+  .sidebar { width: 260px; flex: none; overflow-y: auto; border-right: 1px solid #e4e2da; background: #fbfaf7; }
+  .sidebar h1 { font-size: 13px; font-weight: 700; padding: 16px 16px 10px; margin: 0; }
+  .sidebar > ul { list-style: none; margin: 0; padding: 0 8px 12px; }
+  .home-link { display: block; padding: 8px 8px; margin: 0 8px 6px; border-radius: 6px; font-size: 12.5px; font-weight: 700; color: #1f3a5f; text-decoration: none; background: #e4e9ef; }
+
+  .draw-group { margin-bottom: 2px; }
+  .draw-group.is-hidden { display: none; }
+  .draw-header { width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 8px 8px; border-radius: 6px; font: inherit; text-align: left; }
+  .draw-header:hover { background: #f0efe8; }
+  .draw-header .chevron { font-size: 10px; color: #9a9a90; transition: transform 0.15s ease; flex: none; }
+  .draw-header[aria-expanded="true"] .chevron { transform: rotate(90deg); }
+  .draw-label { flex: 1; font-size: 12.5px; font-weight: 600; }
+  .draw-count { font-size: 10.5px; color: #8a8878; background: #ecebe3; border-radius: 10px; padding: 1px 7px; }
+  .draw-body { list-style: none; margin: 0; padding: 0; max-height: 0; overflow: hidden; transition: max-height 0.2s ease; }
+  .draw-body[data-open="true"] { max-height: 400px; }
+  .draw-body li a { display: block; padding: 6px 10px 6px 30px; font-size: 12.5px; text-decoration: none; color: #55534a; border-radius: 6px; margin: 1px 4px; }
+  .draw-body li a:hover { background: #f0efe8; }
+  .draw-body li a.active { background: #1f3a5f; color: #fff; font-weight: 600; }
+
+  .main { flex: 1; overflow-y: auto; }
+  #dashboard-view { max-width: 640px; margin: 0 auto; padding: 24px 20px 60px; }
+  #dashboard-view h2 { font-size: 14px; border-bottom: 1.5px solid #1c1c1c; padding-bottom: 6px; }
+  #dashboard-view section { margin-bottom: 28px; }
+  .summary-box { background: #ecebe3; border-left: 3px solid #1f3a5f; padding: 12px 16px; font-size: 13px; margin-bottom: 8px; }
+  ul.pred-list { list-style: none; margin: 0; padding: 0; }
+  ul.pred-list li { display: flex; gap: 12px; padding: 6px 0; border-bottom: 1px solid #eee; font-variant-numeric: tabular-nums; }
+  .set-idx { color: #8a8878; width: 16px; }
+  .note { font-size: 12px; color: #6b6a60; }
+  iframe { width: 100%; height: 100%; border: none; }
+</style>
+<div class="layout">
+  <nav class="sidebar">
+    <h1>로또 대시보드</h1>
+    <a href="#" id="home-link" class="home-link">대시보드 홈</a>
+    <ul id="group-list">
+        <li class="draw-group">
+          <button class="draw-header" type="button" aria-expanded="true">
+            <span class="chevron">&#9656;</span>
+            <span class="draw-label">1241회차 예측</span>
+            <span class="draw-count">12</span>
+          </button>
+          <ul class="draw-body" data-open="true">
+            <li><a href="#" data-src="reports/lotto_report_20260913_152221.html">2026-09-13 15:22</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_152045.html">2026-09-13 15:20</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_151957.html">2026-09-13 15:19</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_151435.html">2026-09-13 15:14</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_151335.html">2026-09-13 15:13</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_150525.html">2026-09-13 15:05</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_150128.html">2026-09-13 15:01</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_145635.html">2026-09-13 14:56</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_145150.html">2026-09-13 14:51</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_145050.html">2026-09-13 14:50</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_141548.html">2026-09-13 14:15</a></li>
+            <li><a href="#" data-src="reports/lotto_report_20260913_054851.html">2026-09-13 05:48</a></li>
+          </ul>
+        </li>
+    </ul>
+  </nav>
+  <main class="main">
+    <div id="dashboard-view">
+      <p class="note">최근 실제 당첨: 1240회차 (2026-09-05) — 11, 13, 19, 20, 31, 44</p>
+      <section>
+        <h2>1241회차 예측</h2>
+        <div class="summary-box">아직 적중 이력 없음 — 다음 회차부터 집계 시작</div>
+        <ul class="pred-list">
+          <li><span class="set-idx">1</span><span class="set-nums">3 · 14 · 23 · 26 · 38 · 40</span></li>
+          <li><span class="set-idx">2</span><span class="set-nums">5 · 8 · 11 · 19 · 22 · 31</span></li>
+          <li><span class="set-idx">3</span><span class="set-nums">2 · 15 · 20 · 29 · 39 · 45</span></li>
+          <li><span class="set-idx">4</span><span class="set-nums">7 · 9 · 17 · 27 · 42 · 44</span></li>
+          <li><span class="set-idx">5</span><span class="set-nums">14 · 18 · 19 · 28 · 43 · 44</span></li>
+        </ul>
+        <p class="note">예측 파일: predictions_20260913_152221.json</p>
+      </section>
+
+      <section>
+        <h2>적중 이력 추세</h2>
+        <p class="note">아직 적중 이력 없음 — 다음 회차 추첨 이후부터 집계가 시작됩니다.</p>
+      </section>
+    </div>
+    <iframe id="viewer" hidden></iframe>
+  </main>
+</div>
+<script>
+
+
+document.querySelectorAll('.draw-header').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    btn.nextElementSibling.setAttribute('data-open', open ? 'false' : 'true');
+  });
+});
+
+const dashboardView = document.getElementById('dashboard-view');
+const viewer = document.getElementById('viewer');
+
+document.querySelectorAll('.draw-body a').forEach(a => {
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    viewer.src = a.dataset.src;
+    viewer.hidden = false;
+    dashboardView.hidden = true;
+    document.querySelectorAll('.draw-body a').forEach(el => el.classList.remove('active'));
+    a.classList.add('active');
+  });
+});
+
+document.getElementById('home-link').addEventListener('click', (e) => {
+  e.preventDefault();
+  viewer.hidden = true;
+  dashboardView.hidden = false;
+  document.querySelectorAll('.draw-body a').forEach(el => el.classList.remove('active'));
+});
+</script>
