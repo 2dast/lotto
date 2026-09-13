@@ -1,5 +1,5 @@
-"""scripts/report_template.html을 바탕으로 predictions/의 최신 추천 번호를 채워
-reports/lotto_report_<타임스탬프>.html로 저장한다. 매 실행마다 새 파일을 남겨
+"""scripts/report_template.html을 바탕으로 predictions/round_<회차>/의 최신 추천 번호를 채워
+reports/round_<회차>/lotto_report_<회차>_<타임스탬프>.html로 저장한다. 매 실행마다 새 파일을 남겨
 이력으로 쌓이며, 템플릿 자체는 건드리지 않는다.
 
 리포트는 RULES.md 조건표 + 추천 세트 스크리닝표만 다루므로, data/draws.json에서는
@@ -28,11 +28,16 @@ def set_span(html: str, span_id: str, value: str) -> str:
 
 
 def load_latest_predictions() -> tuple[str, dict]:
-    files = sorted(PREDICTIONS_DIR.glob("predictions_*.json"))
+    files = list(PREDICTIONS_DIR.glob("round_*/predictions_*.json"))
     if not files:
-        raise FileNotFoundError("predictions/predictions_*.json이 없습니다. scripts/predict.py를 먼저 실행하세요")
-    latest = files[-1]
-    return latest.name, json.loads(latest.read_text(encoding="utf-8"))
+        raise FileNotFoundError(
+            "predictions/round_<회차>/predictions_*.json이 없습니다. scripts/predict.py를 먼저 실행하세요"
+        )
+    # 파일명에 회차 번호가 zero-padding 없이 들어가 있어 이름순 정렬은 신뢰할 수 없다
+    # (예: "predictions_1_..." > "predictions_1242_..."). generated_at(ISO8601)으로 정렬한다.
+    candidates = [(json.loads(p.read_text(encoding="utf-8")), p) for p in files]
+    data, latest = max(candidates, key=lambda c: c[0]["generated_at"])
+    return latest.name, data
 
 
 def main() -> None:
@@ -65,10 +70,11 @@ def main() -> None:
     html = set_span(html, "f-basedon5", str(based_on + 1))
     html = set_span(html, "f-predfile", pred_filename)
 
-    # predictions_<ts>.json 의 타임스탬프를 그대로 리포트 파일명에 붙여 1:1로 이력 관리
-    ts = pred_filename.removeprefix("predictions_").removesuffix(".json")
-    REPORT_DIR.mkdir(exist_ok=True)
-    report_path = REPORT_DIR / f"lotto_report_{ts}.html"
+    # predictions_<회차>_<ts>.json 의 <회차>_<ts> 부분을 그대로 리포트 파일명에 붙여 1:1로 이력 관리
+    suffix = pred_filename.removeprefix("predictions_").removesuffix(".json")
+    round_dir = REPORT_DIR / f"round_{based_on + 1}"
+    round_dir.mkdir(parents=True, exist_ok=True)
+    report_path = round_dir / f"lotto_report_{suffix}.html"
     report_path.write_text(html, encoding="utf-8")
     print(f"리포트 생성됨 -> {report_path} (총 {total}회차, 기준회차 {based_on})")
 

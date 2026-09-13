@@ -1,4 +1,4 @@
-"""reports/ 안의 lotto_report_<timestamp>.html 파일들을 스캔해서
+"""reports/round_<회차>/ 안의 lotto_report_<회차>_<timestamp>.html 파일들을 스캔해서
 reports/index.html을 생성한다. 최신 리포트를 iframe으로 바로 보여주고,
 좌측 목록은 예측 대상 회차별 아코디언으로 묶고, 최근 10개 회차만 먼저 보여준 뒤
 "더보기"로 이전 회차를 펼친다.
@@ -10,22 +10,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REPORT_DIR = ROOT / "reports"
-FILENAME_RE = re.compile(r"^lotto_report_(\d{8})_(\d{6})\.html$")
-BASEDON_RE = re.compile(r'id="f-basedon">(\d+)<')
+FILENAME_RE = re.compile(r"^lotto_report_(\d+)_(\d{8})_(\d{6})\.html$")
 VISIBLE_GROUPS = 10
 
 
 def list_reports():
+    """(next_draw, timestamp, "round_<회차>/<파일명>") 튜플 리스트를 반환한다."""
     reports = []
-    for path in REPORT_DIR.glob("lotto_report_*.html"):
+    for path in REPORT_DIR.glob("round_*/lotto_report_*.html"):
         m = FILENAME_RE.match(path.name)
         if not m:
             continue
-        timestamp = dt.datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S")
-        basedon_m = BASEDON_RE.search(path.read_text(encoding="utf-8"))
-        based_on = int(basedon_m.group(1)) if basedon_m else 0
-        next_draw = based_on + 1  # 예측 대상은 마지막 발표 회차의 "다음" 회차
-        reports.append((next_draw, timestamp, path.name))
+        next_draw = int(m.group(1))
+        timestamp = dt.datetime.strptime(m.group(2) + m.group(3), "%Y%m%d%H%M%S")
+        rel_path = f"{path.parent.name}/{path.name}"
+        reports.append((next_draw, timestamp, rel_path))
     reports.sort(key=lambda r: (r[0], r[1]), reverse=True)
     return reports
 

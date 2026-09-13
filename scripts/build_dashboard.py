@@ -29,15 +29,18 @@ def number_ball(n: int, hit: bool = False) -> str:
 
 
 def load_latest_predictions() -> tuple[str, dict]:
-    files = sorted(PREDICTIONS_DIR.glob("predictions_*.json"))
-    latest = files[-1]
-    return latest.name, json.loads(latest.read_text(encoding="utf-8"))
+    files = list(PREDICTIONS_DIR.glob("round_*/predictions_*.json"))
+    # 파일명의 회차 번호가 zero-padding 없이 들어가 이름순 정렬은 신뢰할 수 없다.
+    # generated_at(ISO8601) 값으로 정렬해 진짜 최신 파일을 고른다.
+    candidates = [(json.loads(p.read_text(encoding="utf-8")), p) for p in files]
+    data, latest = max(candidates, key=lambda c: c[0]["generated_at"])
+    return latest.name, data
 
 
 def load_all_predictions() -> list[dict]:
     """predictions/ 안의 모든 예측 파일을 회차 선택 드롭다운용으로 모은다."""
     entries = []
-    for path in sorted(PREDICTIONS_DIR.glob("predictions_*.json")):
+    for path in sorted(PREDICTIONS_DIR.glob("round_*/predictions_*.json"), key=lambda p: p.name):
         data = json.loads(path.read_text(encoding="utf-8"))
         entries.append({
             "file": path.name,
@@ -470,6 +473,7 @@ def main() -> None:
   .accuracy-badge.dim {{ background: var(--grey-100); color: var(--text-secondary); }}
 
   iframe {{ display: block; width: 100%; height: 100%; border: none; }}
+  iframe[hidden] {{ display: none; }}
 </style>
 <header class="top-nav">
   <button class="menu-btn" id="menu-btn" type="button" aria-label="리포트 목록 열기" aria-expanded="false" aria-controls="sidebar">

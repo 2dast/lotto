@@ -204,8 +204,10 @@ def main() -> None:
         "predictions": predictions,
     }
 
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    output_path = OUTPUT_DIR / f"predictions_{now.strftime('%Y%m%d_%H%M%S')}.json"
+    next_draw = last_drw_no + 1
+    round_dir = OUTPUT_DIR / f"round_{next_draw}"
+    round_dir.mkdir(parents=True, exist_ok=True)
+    output_path = round_dir / f"predictions_{next_draw}_{now.strftime('%Y%m%d_%H%M%S')}.json"
     output_path.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"{len(predictions)}개 세트 생성됨 -> {output_path}")
 
