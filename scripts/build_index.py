@@ -3,6 +3,7 @@ reports/index.html을 생성한다. 최신 리포트를 iframe으로 바로 보�
 좌측 목록에서 과거 리포트를 선택하면 iframe이 해당 리포트로 바뀐다.
 """
 import datetime as dt
+import itertools
 import re
 from pathlib import Path
 
@@ -25,19 +26,36 @@ def list_reports():
 
 def render_index(reports):
     latest_name = reports[0][1]
-    items = "\n".join(
-        f'      <li><a href="#" data-src="{name}" class="{"active" if name == latest_name else ""}">'
-        f'{ts.strftime("%Y-%m-%d %H:%M")}</a></li>'
-        for ts, name in reports
-    )
+
+    groups = []
+    for date, group in itertools.groupby(reports, key=lambda r: r[0].date()):
+        groups.append((date, list(group)))
+
+    sections = []
+    for date, group in groups:
+        items = "\n".join(
+            f'        <li><a href="#" data-src="{name}" class="{"active" if name == latest_name else ""}">'
+            f'{ts.strftime("%H:%M")}</a></li>'
+            for ts, name in group
+        )
+        sections.append(f"""      <li class="date-group">
+        <div class="date-label">{date.strftime("%Y-%m-%d")} ({len(group)}건)</div>
+        <ul>
+{items}
+        </ul>
+      </li>""")
+    items = "\n".join(sections)
+
     return f"""<title>로또 분석 리포트</title>
 <style>
   body {{ margin: 0; font-family: system-ui, sans-serif; }}
   .layout {{ display: flex; height: 100vh; }}
   .sidebar {{ width: 220px; flex: none; overflow-y: auto; border-right: 1px solid #ddd; padding: 12px 0; }}
   .sidebar h1 {{ font-size: 14px; padding: 0 16px; margin: 0 0 8px; }}
-  .sidebar ul {{ list-style: none; margin: 0; padding: 0; }}
-  .sidebar li a {{ display: block; padding: 8px 16px; font-size: 13px; text-decoration: none; color: #333; }}
+  .sidebar > ul {{ list-style: none; margin: 0; padding: 0; }}
+  .date-label {{ padding: 8px 16px 4px; font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.02em; }}
+  .date-group ul {{ list-style: none; margin: 0; padding: 0; }}
+  .sidebar li a {{ display: block; padding: 6px 16px 6px 24px; font-size: 13px; text-decoration: none; color: #333; }}
   .sidebar li a:hover {{ background: #f0f0f0; }}
   .sidebar li a.active {{ background: #e4e9ef; font-weight: 700; color: #1f3a5f; }}
   iframe {{ flex: 1; border: none; }}
