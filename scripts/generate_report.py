@@ -62,6 +62,7 @@ def main() -> None:
     html = set_span(html, "f-basedon2", str(based_on + 1))
     html = set_span(html, "f-basedon3", str(based_on + 1))
     html = set_span(html, "f-basedon4", str(based_on + 1))
+    html = set_span(html, "f-basedon5", str(based_on + 1))
     html = set_span(html, "f-predfile", pred_filename)
 
     # predictions_<ts>.json 의 타임스탬프를 그대로 리포트 파일명에 붙여 1:1로 이력 관리
