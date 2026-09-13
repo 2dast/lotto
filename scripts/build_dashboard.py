@@ -5,16 +5,19 @@
 
 화면 톤은 design.md(토스 디자인 시스템 토큰 기반)를 따른다.
 """
+import datetime as dt
 import itertools
 import json
 from pathlib import Path
 
 from build_index import list_reports
+from predict import load_rules
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_PATH = ROOT / "data" / "draws.json"
 PREDICTIONS_DIR = ROOT / "predictions"
 OUTPUT_PATH = ROOT / "index.html"
+KST = dt.timezone(dt.timedelta(hours=9))
 
 BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"]
 
@@ -53,12 +56,47 @@ def load_all_predictions() -> list[dict]:
     return entries
 
 
+def compute_all_freq(draws: list[dict]) -> list[int]:
+    freq = [0] * 45
+    for d in draws:
+        for n in d["numbers"]:
+            freq[n - 1] += 1
+    return freq
+
+
+def next_draw_date_label(latest_draw: dict) -> str:
+    """로또는 매주 토요일 추첨이므로 마지막 실제 회차 날짜 + 7일 = 다음 추첨일."""
+    last_date = dt.datetime.strptime(latest_draw["date"], "%Y-%m-%d").date()
+    next_date = last_date + dt.timedelta(days=7)
+    today = dt.datetime.now(KST).date()
+    d_day = (next_date - today).days
+    if d_day > 0:
+        return f"다음 추첨 {next_date.isoformat()} (D-{d_day})"
+    if d_day == 0:
+        return f"다음 추첨 {next_date.isoformat()} (오늘)"
+    return f"다음 추첨 {next_date.isoformat()} (결과 반영 대기)"
+
+
+def rules_summary_line(rules: dict) -> str:
+    f = rules["pattern_filters"]
+    odd_lo, odd_hi = f["odd_even_ratio"]
+    sum_lo, sum_hi = f["sum_range"]
+    zone_bits = ", ".join(f'{z["range"][0]}~{z["range"][1]}: {z["min"]}~{z["max"]}개' for z in f["zones"])
+    return (
+        f'홀수 {odd_lo}~{odd_hi}개 · 합계 {sum_lo}~{sum_hi} · 연속 최대 {f["max_consecutive"]}개'
+        + (f' · 구간별({zone_bits})' if zone_bits else "")
+    )
+
+
 def render_summary(
     draws: list[dict],
     latest_draw: dict,
     pred_filename: str,
     pred_data: dict,
     all_predictions: list[dict],
+    all_freq: list[int],
+    rules_line: str,
+    dday_label: str,
 ) -> tuple[str, str]:
     """대시보드 메인 화면(요약 + 예측 + 추세)의 HTML과 <script>를 반환한다.
 
@@ -78,10 +116,12 @@ def render_summary(
 
     predictions_json = json.dumps(all_predictions, ensure_ascii=False)
     draws_by_no_json = json.dumps({d["drwNo"]: d["numbers"] for d in draws}, ensure_ascii=False)
+    all_freq_json = json.dumps(all_freq, ensure_ascii=False)
 
-    pred_select_script = f"""
+    shared_script = f"""
     const PREDICTIONS = {predictions_json};
     const DRAWS_BY_NO = {draws_by_no_json};
+    const ALL_FREQ = {all_freq_json};
     const LATEST_DRWNO = {latest_draw["drwNo"]};
     const BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"];
 
@@ -93,6 +133,34 @@ def render_summary(
       const actual = new Set(actualNumbers);
       return predictions.map(combo => combo.filter(n => actual.has(n)).length);
     }}
+    // 회차별로 실제 결과가 이미 나온 예측만, 같은 회차에 여러 파일이 있으면
+    // 가장 나중에 생성된 파일을 그 회차의 대표 기록으로 삼는다.
+    function computeHistory() {{
+      const byRound = {{}};
+      PREDICTIONS.forEach(p => {{
+        if (!DRAWS_BY_NO[p.next_draw]) return;
+        const cur = byRound[p.next_draw];
+        if (!cur || p.generated_at > cur.generated_at) byRound[p.next_draw] = p;
+      }});
+      return Object.values(byRound).map(p => {{
+        const hits = computeHits(p.predictions, DRAWS_BY_NO[p.next_draw]);
+        return {{drwNo: p.next_draw, best: Math.max(...hits), avg: hits.reduce((a, b) => a + b, 0) / hits.length}};
+      }}).sort((a, b) => a.drwNo - b.drwNo);
+    }}
+
+    const freqGrid = document.getElementById('freq-grid');
+    const freqMin = Math.min(...ALL_FREQ), freqMax = Math.max(...ALL_FREQ);
+    function updateHeatmap(highlightNumbers) {{
+      const highlight = highlightNumbers || new Set();
+      freqGrid.innerHTML = ALL_FREQ.map((f, i) => {{
+        const n = i + 1;
+        const t = (f - freqMin) / (freqMax - freqMin || 1);
+        const bg = `color-mix(in oklch, var(--blue-500) ${{Math.round((0.12 + t * 0.55) * 100)}}%, var(--grey-50))`;
+        const cls = highlight.has(n) ? 'freq-cell predicted' : 'freq-cell';
+        return `<div class="${{cls}}" style="background:${{bg}}" title="${{n}}번: ${{f}}회">${{n}}</div>`;
+      }}).join('');
+    }}
+    updateHeatmap();
 
     const roundSelect = document.getElementById('round-select');
     const fileSelect = document.getElementById('file-select');
@@ -140,6 +208,7 @@ def render_summary(
           </li>
         `).join('');
       }}
+      updateHeatmap(new Set(entry.predictions.flat()));
     }}
 
     roundSelect.addEventListener('change', () => {{
@@ -160,19 +229,7 @@ def render_summary(
       const svg = document.getElementById("chart-trend");
       const caption = document.getElementById("trend-caption");
       if (!svg) return;
-
-      // 회차별로 실제 결과가 이미 나온 예측만, 같은 회차에 여러 파일이 있으면
-      // 가장 나중에 생성된 파일을 그 회차의 대표 기록으로 삼는다.
-      const byRound = {{}};
-      PREDICTIONS.forEach(p => {{
-        if (!DRAWS_BY_NO[p.next_draw]) return;
-        const cur = byRound[p.next_draw];
-        if (!cur || p.generated_at > cur.generated_at) byRound[p.next_draw] = p;
-      }});
-      const HISTORY = Object.values(byRound).map(p => {{
-        const hits = computeHits(p.predictions, DRAWS_BY_NO[p.next_draw]);
-        return {{drwNo: p.next_draw, best: Math.max(...hits), avg: hits.reduce((a, b) => a + b, 0) / hits.length}};
-      }}).sort((a, b) => a.drwNo - b.drwNo);
+      const HISTORY = computeHistory();
 
       if (HISTORY.length === 0) {{
         svg.hidden = true;
@@ -210,16 +267,44 @@ def render_summary(
       }});
     }})();"""
 
+    kpi_script = """
+    (function(){
+      const box = document.getElementById('kpi-row');
+      if (!box) return;
+      const HISTORY = computeHistory();
+      if (HISTORY.length === 0) {
+        box.hidden = true;
+        return;
+      }
+      const tracked = HISTORY.length;
+      const avgBest = HISTORY.reduce((a, h) => a + h.best, 0) / tracked;
+      const beatRandom = HISTORY.filter(h => h.best > 0.8).length;
+      box.innerHTML = `
+        <div class="kpi"><div class="kpi-value">${tracked}</div><div class="kpi-label">추적 회차</div></div>
+        <div class="kpi"><div class="kpi-value">${avgBest.toFixed(2)}</div><div class="kpi-label">평균 최고적중</div></div>
+        <div class="kpi"><div class="kpi-value">${beatRandom}/${tracked}</div><div class="kpi-label">무작위(0.8) 초과</div></div>
+      `;
+    })();"""
+
     trend_section = """
       <section class="card">
         <h2 class="h3">적중 이력 추세</h2>
+        <div class="kpi-row" id="kpi-row"></div>
         <svg id="chart-trend" viewBox="0 0 600 200" width="100%"></svg>
         <p class="caption" id="trend-caption"></p>
+      </section>"""
+
+    freq_section = """
+      <section class="card">
+        <h2 class="h3">번호별 출현빈도 (1~45)</h2>
+        <div class="freq-grid" id="freq-grid"></div>
+        <p class="caption">전체 회차 누적 출현 횟수 — 진할수록 많이 나온 번호, 파란 테두리는 현재 선택된 예측에 포함된 번호.</p>
       </section>"""
 
     html = f"""
       <p class="body-1">최근 실제 당첨 · <span class="table-numeric">{latest_draw["drwNo"]}회차</span> ({latest_draw["date"]})</p>
       <p class="ball-row">{latest_balls}</p>
+      <p class="caption">{dday_label}</p>
 
       <section class="card">
         <div class="pred-header">
@@ -231,13 +316,15 @@ def render_summary(
             <select id="file-select" aria-label="예측 파일 선택"></select>
           </div>
         </div>
+        <p class="caption" style="margin-top:0">스크리닝 조건: {rules_line}</p>
         <p class="body-1" id="pred-summary" style="margin:0 0 12px"></p>
         <ul class="pred-list" id="pred-list"></ul>
         <p class="caption" id="pred-file-caption">예측 파일: {pred_filename}</p>
       </section>
 {trend_section}
+{freq_section}
       <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>"""
-    return html, pred_select_script + trend_script
+    return html, shared_script + kpi_script + trend_script
 
 
 def render_sidebar(reports: list[tuple[int, object, str]]) -> str:
@@ -276,12 +363,18 @@ def main() -> None:
     pred_filename, pred_data = load_latest_predictions()
     reports = list_reports()
     all_predictions = load_all_predictions()
+    all_freq = compute_all_freq(draws)
+    rules_line = rules_summary_line(load_rules())
+    dday_label = next_draw_date_label(latest_draw)
 
     summary_html, trend_script = render_summary(
-        draws, latest_draw, pred_filename, pred_data, all_predictions
+        draws, latest_draw, pred_filename, pred_data, all_predictions,
+        all_freq, rules_line, dday_label,
     )
     sidebar_html = render_sidebar(reports)
     next_draw_label = f'{pred_data["based_on_drwNo"] + 1}회차 예측 기준'
+    generated_at_label = dt.datetime.now(KST).strftime("%Y-%m-%d %H:%M")
+    summary_html += f'\n      <p class="footnote">마지막 갱신: {generated_at_label} (KST, GitHub Actions 자동 실행)</p>'
 
     html = f"""<title>로또 대시보드</title>
 <script>
@@ -471,6 +564,22 @@ def main() -> None:
     font-size: 15px; font-weight: 600; background: var(--blue-50); color: var(--blue-500);
   }}
   .accuracy-badge.dim {{ background: var(--grey-100); color: var(--text-secondary); }}
+
+  .kpi-row {{ display: flex; gap: 8px; margin-bottom: 16px; }}
+  .kpi {{
+    flex: 1; text-align: center; padding: 12px 8px; border-radius: 12px; background: var(--grey-50);
+    border: 1px solid var(--border-secondary);
+  }}
+  .kpi-value {{ font-size: 20px; font-weight: 700; letter-spacing: -0.015em; color: var(--text-primary); font-variant-numeric: tabular-nums; }}
+  .kpi-label {{ font-size: 12px; font-weight: 500; color: var(--text-tertiary); margin-top: 4px; }}
+
+  .freq-grid {{ display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; margin-bottom: 8px; }}
+  .freq-cell {{
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500; color: var(--text-primary); border-radius: 8px;
+    font-variant-numeric: tabular-nums;
+  }}
+  .freq-cell.predicted {{ outline: 2px solid var(--blue-500); outline-offset: -2px; font-weight: 700; }}
 
   iframe {{ display: block; width: 100%; height: 100%; border: none; }}
   iframe[hidden] {{ display: none; }}
