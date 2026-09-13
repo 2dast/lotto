@@ -420,7 +420,10 @@ def main() -> None:
     align-items: start;
   }}
   #dashboard-view[hidden] {{ display: none; }}
-  .dash-footer {{ grid-column: 1 / -1; display: flex; gap: 16px; flex-wrap: wrap; }}
+  .dash-footer {{
+    grid-column: 1 / -1; display: flex; gap: 16px; flex-wrap: wrap;
+    padding-top: 16px; border-top: 1px solid var(--border-secondary);
+  }}
   .dash-footer .footnote {{ margin: 0; }}
   .card {{
     border: 1px solid var(--border-secondary); border-radius: 16px; box-shadow: var(--shadow-1);
