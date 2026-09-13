@@ -435,6 +435,7 @@ def main() -> None:
     height: 100%; max-width: 1120px; margin: 0 auto; padding: 20px; box-sizing: border-box;
     display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 12px;
   }}
+  #dashboard-view[hidden] {{ display: none; }}
   .dash-left {{ grid-column: 1; min-height: 0; overflow-y: auto; }}
   .dash-right {{ grid-column: 2; min-height: 0; overflow-y: auto; }}
   .dash-footer {{ grid-column: 1 / -1; display: flex; gap: 16px; flex-wrap: wrap; }}
