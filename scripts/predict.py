@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 RULES_PATH = ROOT / "RULES.md"
 DATA_PATH = ROOT / "data" / "draws.json"
-OUTPUT_PATH = ROOT / "predictions.json"
+OUTPUT_DIR = ROOT / "predictions"
 
 ALL_NUMBERS = list(range(1, 46))
 
@@ -196,13 +196,17 @@ def main() -> None:
     predictions = generate_predictions(rules, scores)
 
     last_drw_no = max((d["drwNo"] for d in draws), default=0)
+    now = dt.datetime.now()
     output = {
         "based_on_drwNo": last_drw_no,
-        "generated_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "generated_at": now.isoformat(timespec="seconds"),
         "predictions": predictions,
     }
-    OUTPUT_PATH.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"{len(predictions)}개 세트 생성됨 -> {OUTPUT_PATH}")
+
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    output_path = OUTPUT_DIR / f"predictions_{now.strftime('%Y%m%d_%H%M%S')}.json"
+    output_path.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"{len(predictions)}개 세트 생성됨 -> {output_path}")
 
 
 if __name__ == "__main__":

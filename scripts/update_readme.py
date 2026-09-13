@@ -1,14 +1,21 @@
-"""predictions.json의 최신 예측을 README.md 마커 구간에 반영한다."""
+"""predictions/ 폴더의 최신 예측 파일을 README.md 마커 구간에 반영한다."""
 import json
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 README_PATH = ROOT / "README.md"
-PREDICTIONS_PATH = ROOT / "predictions.json"
+PREDICTIONS_DIR = ROOT / "predictions"
 
 START_MARKER = "<!-- PREDICTION:START -->"
 END_MARKER = "<!-- PREDICTION:END -->"
+
+
+def find_latest_predictions_file(dir_path: Path = PREDICTIONS_DIR) -> Path:
+    files = sorted(dir_path.glob("predictions_*.json"))
+    if not files:
+        raise FileNotFoundError(f"{dir_path}에 predictions_*.json 파일이 없습니다")
+    return files[-1]  # 파일명이 일자시분초 순이라 정렬하면 마지막이 최신
 
 
 def build_block(data: dict) -> str:
@@ -26,7 +33,8 @@ def build_block(data: dict) -> str:
 
 
 def main() -> None:
-    data = json.loads(PREDICTIONS_PATH.read_text(encoding="utf-8"))
+    latest_path = find_latest_predictions_file()
+    data = json.loads(latest_path.read_text(encoding="utf-8"))
     readme = README_PATH.read_text(encoding="utf-8")
 
     pattern = re.compile(
