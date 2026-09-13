@@ -2,6 +2,7 @@
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
   :root {
+    color-scheme: light;
     --blue-500: oklch(0.624 0.176 254);
     --blue-50:  oklch(0.965 0.020 250);
     --grey-900: oklch(0.234 0.030 254);
@@ -23,6 +24,24 @@
     --text-tertiary: oklch(0.155 0.060 261 / 0.58);
     --border-secondary: var(--grey-200);
     --shadow-1: 0 1px 2px oklch(0.155 0.060 261 / 0.06), 0 1px 1px oklch(0.155 0.060 261 / 0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --blue-500: #6f8fb8;
+      --blue-50:  #24344a;
+      --grey-900: #ecebe6;
+      --grey-700: #b7b6ac;
+      --grey-400: #85847a;
+      --grey-200: #35363a;
+      --grey-100: #232428;
+      --grey-50:  #1d1e21;
+      --white:    #16171a;
+      --red-500:  #d9736b;
+      --green-500: #4fa688;
+      --text-tertiary: rgba(236, 235, 230, 0.58);
+      --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 1px rgba(0, 0, 0, 0.20);
+    }
   }
   * { box-sizing: border-box; }
   body {
@@ -103,7 +122,7 @@
     width: 32px; height: 32px; border-radius: 999px; margin-right: 6px;
     font-size: 15px; font-weight: 600; color: var(--white); font-variant-numeric: tabular-nums;
   }
-  .number-ball.ball-yellow { background: var(--ball-yellow); color: var(--grey-900); }
+  .number-ball.ball-yellow { background: var(--ball-yellow); color: #1c1c1c; }
   .number-ball.ball-blue { background: var(--ball-blue); }
   .number-ball.ball-red { background: var(--ball-red); }
   .number-ball.ball-grey { background: var(--ball-grey); }

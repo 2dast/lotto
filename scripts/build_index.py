@@ -68,6 +68,7 @@ def render_index(reports):
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
   :root {{
+    color-scheme: light;
     --blue-500: oklch(0.624 0.176 254);
     --blue-50:  oklch(0.965 0.020 250);
     --grey-900: oklch(0.234 0.030 254);
@@ -80,10 +81,26 @@ def render_index(reports):
     --text-primary: var(--grey-900);
     --text-secondary: var(--grey-700);
     --border-secondary: var(--grey-200);
+    --shadow-1: 0 1px 2px oklch(0.155 0.060 261 / 0.06), 0 1px 1px oklch(0.155 0.060 261 / 0.04);
+  }}
+  @media (prefers-color-scheme: dark) {{
+    :root {{
+      color-scheme: dark;
+      --blue-500: #6f8fb8;
+      --blue-50:  #24344a;
+      --grey-900: #ecebe6;
+      --grey-700: #b7b6ac;
+      --grey-400: #85847a;
+      --grey-200: #35363a;
+      --grey-100: #232428;
+      --grey-50:  #1d1e21;
+      --white:    #16171a;
+      --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 1px rgba(0, 0, 0, 0.20);
+    }}
   }}
   * {{ box-sizing: border-box; }}
   body {{
-    margin: 0; color: var(--text-primary);
+    margin: 0; color: var(--text-primary); background: var(--white);
     font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", Roboto, "Helvetica Neue", Arial, sans-serif;
   }}
   .top-nav {{
