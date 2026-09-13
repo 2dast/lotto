@@ -26,7 +26,8 @@ def test_collect_new_draws_single_partial_page():
             return [make_item(2)]
         return []
 
-    with patch("collect.fetch_page", side_effect=fake_fetch_page):
+    with patch("collect.fetch_page", side_effect=fake_fetch_page), \
+         patch("collect.fetch_center", return_value=[]):
         new_draws = collect_new_draws(existing)
 
     assert [d["drwNo"] for d in new_draws] == [2]
@@ -35,7 +36,8 @@ def test_collect_new_draws_single_partial_page():
 def test_collect_new_draws_no_new_data():
     existing = [{"drwNo": 5, "date": "x", "numbers": [1, 2, 3, 4, 5, 6], "bonusNo": 7}]
 
-    with patch("collect.fetch_page", return_value=[]):
+    with patch("collect.fetch_page", return_value=[]), \
+         patch("collect.fetch_center", return_value=[]):
         new_draws = collect_new_draws(existing)
 
     assert new_draws == []
@@ -51,7 +53,24 @@ def test_collect_new_draws_paginates_over_full_pages():
             return [make_item(n) for n in range(15, 10, -1)]  # 11~15만 존재, partial page
         return []
 
-    with patch("collect.fetch_page", side_effect=fake_fetch_page):
+    with patch("collect.fetch_page", side_effect=fake_fetch_page), \
+         patch("collect.fetch_center", return_value=[]):
         new_draws = collect_new_draws(existing)
 
     assert [d["drwNo"] for d in new_draws] == list(range(1, 16))
+
+
+def test_collect_new_draws_finds_latest_round_via_center_probe():
+    """'older' 페이지네이션이 아직 안 잡아준 방금 발표된 회차를 center 조회로 찾아낸다."""
+    existing = [{"drwNo": 1240, "date": "2026-09-05", "numbers": [1, 2, 3, 4, 5, 6], "bonusNo": 7}]
+
+    def fake_fetch_center(epsd):
+        if epsd == 1241:
+            return [make_item(1241)]
+        return []
+
+    with patch("collect.fetch_page", return_value=[]), \
+         patch("collect.fetch_center", side_effect=fake_fetch_center):
+        new_draws = collect_new_draws(existing)
+
+    assert [d["drwNo"] for d in new_draws] == [1241]
