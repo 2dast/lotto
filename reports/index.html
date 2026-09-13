@@ -1,0 +1,31 @@
+<title>로또 분석 리포트</title>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; }
+  .layout { display: flex; height: 100vh; }
+  .sidebar { width: 220px; flex: none; overflow-y: auto; border-right: 1px solid #ddd; padding: 12px 0; }
+  .sidebar h1 { font-size: 14px; padding: 0 16px; margin: 0 0 8px; }
+  .sidebar ul { list-style: none; margin: 0; padding: 0; }
+  .sidebar li a { display: block; padding: 8px 16px; font-size: 13px; text-decoration: none; color: #333; }
+  .sidebar li a:hover { background: #f0f0f0; }
+  .sidebar li a.active { background: #e4e9ef; font-weight: 700; color: #1f3a5f; }
+  iframe { flex: 1; border: none; }
+</style>
+<div class="layout">
+  <nav class="sidebar">
+    <h1>과거 리포트</h1>
+    <ul>
+      <li><a href="#" data-src="lotto_report_20260913_054851.html" class="active">2026-09-13 05:48</a></li>
+    </ul>
+  </nav>
+  <iframe id="viewer" src="lotto_report_20260913_054851.html"></iframe>
+</div>
+<script>
+document.querySelectorAll('.sidebar a').forEach(a => {
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('viewer').src = a.dataset.src;
+    document.querySelectorAll('.sidebar a').forEach(el => el.classList.remove('active'));
+    a.classList.add('active');
+  });
+});
+</script>
