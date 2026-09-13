@@ -214,15 +214,13 @@ td.num { font-variant-numeric: tabular-nums; text-align: right; color: var(--tex
 td.old { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border); }
 td.new { color: var(--down); font-weight: 700; }
 
-.screen-table td.center { text-align: center; }
-.pass { color: var(--down); font-weight: 700; }
-.pass::before { content: "\2713 "; }
 .combo-numbers { letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
-.verdict-pill {
-  display: inline-block; padding: 2px 9px; border-radius: 10px;
-  font-size: 10.5px; font-weight: 700;
-  background: var(--navy-soft); color: var(--navy);
-}
+
+svg text { fill: var(--text-secondary); font-size: 10px; font-family: inherit; }
+svg .axis-line { stroke: var(--rule); stroke-width: 1; }
+.strip-dot { fill: var(--navy); }
+.strip-row-label { fill: var(--text-muted); font-size: 10px; }
+.coverage-bar { fill: var(--navy); opacity: 0.75; }
 
 .disclaimer {
   color: var(--text-muted);
@@ -262,7 +260,7 @@ td.new { color: var(--down); font-weight: 700; }
       <div class="kf"><div class="kf-label">분석 회차</div><div class="kf-value"><span id="f-count">1,240</span>회</div></div>
       <div class="kf"><div class="kf-label">예측 회차</div><div class="kf-value"><span id="f-basedon3">1241</span>회</div></div>
       <div class="kf"><div class="kf-label">추천 세트</div><div class="kf-value"><span id="f-numsets">5</span>건</div></div>
-      <div class="kf"><div class="kf-label">조건 충족</div><div class="kf-value"><span id="f-passcount">5</span>/<span id="f-numsets2">5</span></div></div>
+      <div class="kf"><div class="kf-label">최대 중복</div><div class="kf-value"><span id="f-maxoverlap">2</span>개 세트</div></div>
     </div>
   </div>
 
@@ -297,17 +295,23 @@ td.new { color: var(--down); font-weight: 700; }
           <th style="text-align:right">홀수<br>(1~5)</th>
           <th style="text-align:right">최대연속<br>(≤3)</th>
           <th style="text-align:right">40-45구간<br>(0~2)</th>
-          <th style="text-align:center">종합</th>
         </tr>
       </thead>
       <tbody id="pred-table-body"></tbody>
     </table>
   </section>
 
+  <section>
+    <h2><span class="roman">Ⅲ.</span> 번호 분포 및 세트 간 중복</h2>
+    <p class="section-desc">추천 세트별로 뽑힌 번호의 위치(1~45)와, 번호별로 몇 개 세트에 중복 포함됐는지를 보여준다.</p>
+    <svg viewBox="0 0 680 160" width="100%" height="160" id="chart-strip"></svg>
+    <svg viewBox="0 0 680 110" width="100%" height="110" id="chart-coverage"></svg>
+  </section>
+
   <div class="disclaimer">
     <p><b>Disclaimer.</b> 본 자료는 로또 6/45 과거 당첨 데이터의 통계적 분포를 정리한 참고자료로, 향후 당첨 확률을 예측하거나 보장하지 않는다.
     로또는 매 회차 독립시행이며, 과거 출현 빈도·패턴은 다음 회차의 개별 번호 당첨 확률에 어떠한 영향도 주지 않는다(도박사의 오류 참고).
-    위 "종합" 판정은 RULES.md 필터 조건 충족 여부일 뿐, 당첨 가능성과는 무관하다.</p>
+    위 표의 조건 범위는 RULES.md 필터 기준일 뿐, 당첨 가능성과는 무관하다.</p>
   </div>
 
 </div>
@@ -316,6 +320,11 @@ td.new { color: var(--down); font-weight: 700; }
 <script>
 const DATA = {"predictions": [[3,12,19,24,33,41],[5,14,21,28,32,44],[2,17,23,29,36,40],[8,11,26,31,38,42],[6,15,22,27,34,45]]};
 
+function svgEl(tag, attrs) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
 function odd(combo) { return combo.filter(n => n % 2 === 1).length; }
 function maxConsecutive(combo) {
   const s = [...combo].sort((a, b) => a - b);
@@ -330,36 +339,82 @@ function zoneCount(combo, lo, hi) { return combo.filter(n => n >= lo && n <= hi)
 
 (function(){
   const body = document.getElementById("pred-table-body");
-  let passCount = 0;
   DATA.predictions.forEach((combo, i) => {
     const sum = combo.reduce((a, b) => a + b, 0);
     const o = odd(combo);
     const run = maxConsecutive(combo);
     const z4045 = zoneCount(combo, 40, 45);
 
-    const sumOk = sum >= 88 && sum <= 189;
-    const oddOk = o >= 1 && o <= 5;
-    const runOk = run <= 3;
-    const zoneOk = z4045 >= 0 && z4045 <= 2;
-    const allOk = sumOk && oddOk && runOk && zoneOk;
-    if (allOk) passCount++;
-
-    const cell = (val, ok) => `<td class="num${ok ? ' pass' : ''}">${val}</td>`;
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
       <td class="combo-numbers">${combo.join(" · ")}</td>
-      ${cell(sum, sumOk)}
-      ${cell(o, oddOk)}
-      ${cell(run, runOk)}
-      ${cell(z4045, zoneOk)}
-      <td class="center"><span class="verdict-pill">${allOk ? "통과" : "미달"}</span></td>
+      <td class="num">${sum}</td>
+      <td class="num">${o}</td>
+      <td class="num">${run}</td>
+      <td class="num">${z4045}</td>
     `;
     body.appendChild(tr);
   });
 
   document.getElementById("f-numsets").textContent = DATA.predictions.length;
-  document.getElementById("f-numsets2").textContent = DATA.predictions.length;
-  document.getElementById("f-passcount").textContent = passCount;
+})();
+
+// 세트별 번호 분포 스트립: 1~45 축 위에 세트별로 뽑힌 번호를 점으로 표시
+(function(){
+  const svg = document.getElementById("chart-strip");
+  const W = 680, H = 160;
+  const padL = 28, padR = 12, padT = 10, padB = 20;
+  const plotW = W - padL - padR;
+  const x = n => padL + ((n - 1) / 44) * plotW;
+  const rowH = (H - padT - padB) / DATA.predictions.length;
+
+  svg.appendChild(svgEl("line", {x1: padL, y1: H - padB, x2: W - padR, y2: H - padB, class: "axis-line"}));
+  [1, 10, 20, 30, 40, 45].forEach(n => {
+    const t = svgEl("text", {x: x(n), y: H - padB + 13, "text-anchor": "middle"});
+    t.textContent = n;
+    svg.appendChild(t);
+  });
+
+  DATA.predictions.forEach((combo, i) => {
+    const cy = padT + rowH * i + rowH / 2;
+    const lbl = svgEl("text", {x: padL - 6, y: cy + 3, "text-anchor": "end"});
+    lbl.setAttribute("class", "strip-row-label");
+    lbl.textContent = `${i + 1}`;
+    svg.appendChild(lbl);
+    combo.forEach(n => {
+      svg.appendChild(svgEl("circle", {cx: x(n), cy, r: 3.5, class: "strip-dot"}));
+    });
+  });
+})();
+
+// 번호별 중복 커버리지: 1~45 각 번호가 몇 개 세트에 포함됐는지
+(function(){
+  const svg = document.getElementById("chart-coverage");
+  const W = 680, H = 110;
+  const padL = 28, padR = 12, padT = 14, padB = 24;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = 45;
+  const gap = 1.5;
+  const barW = (plotW - gap * (n - 1)) / n;
+
+  const counts = new Array(45).fill(0);
+  DATA.predictions.forEach(combo => combo.forEach(num => counts[num - 1]++));
+  const maxV = Math.max(...counts, 1);
+  document.getElementById("f-maxoverlap").textContent = maxV;
+
+  svg.appendChild(svgEl("line", {x1: padL, y1: H - padB, x2: W - padR, y2: H - padB, class: "axis-line"}));
+  counts.forEach((c, i) => {
+    const num = i + 1;
+    const x = padL + i * (barW + gap);
+    const h = (c / maxV) * plotH;
+    const y = H - padB - h;
+    svg.appendChild(svgEl("rect", {x, y, width: barW, height: Math.max(h, 1), class: "coverage-bar"}));
+    if (num % 5 === 0 || num === 1) {
+      const t = svgEl("text", {x: x + barW / 2, y: H - padB + 13, "text-anchor": "middle"});
+      t.textContent = num;
+      svg.appendChild(t);
+    }
+  });
 })();
 </script>
