@@ -16,6 +16,7 @@ REPORT_DIR = ROOT / "reports"
 
 ZONES = [(1, 9), (10, 19), (20, 29), (30, 39), (40, 45)]
 ALL_NUMBERS = list(range(1, 46))
+KST = dt.timezone(dt.timedelta(hours=9))
 WINDOW = 50
 SIMULATIONS_PER_DRAW = 20
 
@@ -174,7 +175,7 @@ def main() -> None:
     first_date = draws[0]["date"]
     last_date = draws[-1]["date"]
     based_on = pred_data["based_on_drwNo"]
-    today = dt.date.today().strftime("%Y.%m.%d")
+    today = dt.datetime.now(KST).strftime("%Y.%m.%d")
 
     html = set_span(html, "f-date", today)
     html = set_span(html, "f-total", str(total))

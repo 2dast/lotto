@@ -11,6 +11,7 @@ DATA_PATH = ROOT / "data" / "draws.json"
 OUTPUT_DIR = ROOT / "predictions"
 
 ALL_NUMBERS = list(range(1, 46))
+KST = dt.timezone(dt.timedelta(hours=9))
 
 DEFAULT_ZONES = [(1, 9), (10, 19), (20, 29), (30, 39), (40, 45)]
 
@@ -196,7 +197,7 @@ def main() -> None:
     predictions = generate_predictions(rules, scores)
 
     last_drw_no = max((d["drwNo"] for d in draws), default=0)
-    now = dt.datetime.now()
+    now = dt.datetime.now(KST)
     output = {
         "based_on_drwNo": last_drw_no,
         "generated_at": now.isoformat(timespec="seconds"),
