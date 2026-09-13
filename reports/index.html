@@ -2,10 +2,12 @@
 <style>
   body { margin: 0; font-family: system-ui, sans-serif; }
   .layout { display: flex; height: 100vh; }
-  .sidebar { width: 220px; flex: none; overflow-y: auto; border-right: 1px solid #ddd; padding: 12px 0; }
+  .sidebar { width: 240px; flex: none; overflow-y: auto; border-right: 1px solid #ddd; padding: 12px 0; }
   .sidebar h1 { font-size: 14px; padding: 0 16px; margin: 0 0 8px; }
-  .sidebar ul { list-style: none; margin: 0; padding: 0; }
-  .sidebar li a { display: block; padding: 8px 16px; font-size: 13px; text-decoration: none; color: #333; }
+  .sidebar > ul { list-style: none; margin: 0; padding: 0; }
+  .draw-label { padding: 8px 16px 4px; font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.02em; }
+  .draw-group ul { list-style: none; margin: 0; padding: 0; }
+  .sidebar li a { display: block; padding: 6px 16px 6px 24px; font-size: 13px; text-decoration: none; color: #333; font-variant-numeric: tabular-nums; }
   .sidebar li a:hover { background: #f0f0f0; }
   .sidebar li a.active { background: #e4e9ef; font-weight: 700; color: #1f3a5f; }
   iframe { flex: 1; border: none; }
@@ -14,11 +16,17 @@
   <nav class="sidebar">
     <h1>과거 리포트</h1>
     <ul>
-      <li><a href="#" data-src="lotto_report_20260913_145150.html" class="active">2026-09-13 14:51</a></li>
-      <li><a href="#" data-src="lotto_report_20260913_054851.html" class="">2026-09-13 05:48</a></li>
+      <li class="draw-group">
+        <div class="draw-label">1241회차 예측 (3건)</div>
+        <ul>
+        <li><a href="#" data-src="lotto_report_20260913_145635.html" class="active">2026-09-13 14:56</a></li>
+        <li><a href="#" data-src="lotto_report_20260913_145150.html" class="">2026-09-13 14:51</a></li>
+        <li><a href="#" data-src="lotto_report_20260913_054851.html" class="">2026-09-13 05:48</a></li>
+        </ul>
+      </li>
     </ul>
   </nav>
-  <iframe id="viewer" src="lotto_report_20260913_145150.html"></iframe>
+  <iframe id="viewer" src="lotto_report_20260913_145635.html"></iframe>
 </div>
 <script>
 document.querySelectorAll('.sidebar a').forEach(a => {
