@@ -199,10 +199,10 @@ def render_summary(
             <select id="file-select" aria-label="예측 파일 선택"></select>
           </div>
         </div>
-        <p class="caption" style="margin-top:0">스크리닝 조건: {rules_line}</p>
         <p class="body-1" id="pred-summary" style="margin:0 0 12px"></p>
         <ul class="pred-list" id="pred-list"></ul>
         <p class="caption" id="pred-file-caption">예측 파일: {pred_filename}</p>
+        <p class="caption">스크리닝 조건: {rules_line}</p>
       </section>
 
       <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>
