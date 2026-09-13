@@ -35,13 +35,35 @@ def load_latest_predictions() -> tuple[str, dict]:
     return latest.name, json.loads(latest.read_text(encoding="utf-8"))
 
 
+def load_all_predictions() -> list[dict]:
+    """predictions/ 안의 모든 예측 파일을 회차 선택 드롭다운용으로 모은다."""
+    entries = []
+    for path in sorted(PREDICTIONS_DIR.glob("predictions_*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        entries.append({
+            "file": path.name,
+            "based_on_drwNo": data["based_on_drwNo"],
+            "next_draw": data["based_on_drwNo"] + 1,
+            "generated_at": data["generated_at"],
+            "predictions": data["predictions"],
+        })
+    entries.sort(key=lambda e: e["generated_at"], reverse=True)
+    return entries
+
+
 def load_history() -> list[dict]:
     if not HISTORY_PATH.exists():
         return []
     return json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
 
 
-def render_summary(latest_draw: dict, pred_filename: str, pred_data: dict, history: list[dict]) -> tuple[str, str]:
+def render_summary(
+    latest_draw: dict,
+    pred_filename: str,
+    pred_data: dict,
+    history: list[dict],
+    all_predictions: list[dict],
+) -> tuple[str, str]:
     """대시보드 메인 화면(요약 + 예측 + 추세)의 HTML과 <script>를 반환한다."""
     based_on = pred_data["based_on_drwNo"]
     next_draw = based_on + 1
@@ -53,6 +75,83 @@ def render_summary(latest_draw: dict, pred_filename: str, pred_data: dict, histo
         f'<span class="set-nums">{" ".join(number_ball(n) for n in combo)}</span></li>'
         for i, combo in enumerate(pred_data["predictions"])
     )
+
+    rounds = sorted({e["next_draw"] for e in all_predictions}, reverse=True)
+    round_options = "\n".join(
+        f'          <option value="{r}"{" selected" if r == next_draw else ""}>{r}회차</option>'
+        for r in rounds
+    )
+
+    predictions_json = json.dumps(all_predictions, ensure_ascii=False)
+    history_by_draw_json = json.dumps(
+        {e["drwNo"]: e for e in history}, ensure_ascii=False
+    )
+
+    pred_select_script = f"""
+    const PREDICTIONS = {predictions_json};
+    const HISTORY_BY_DRAW = {history_by_draw_json};
+    const LATEST_DRWNO = {latest_draw["drwNo"]};
+    const BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"];
+
+    function ballHtml(n) {{
+      const zone = BALL_COLORS[Math.min(Math.floor((n - 1) / 10), 4)];
+      return `<span class="number-ball ${{zone}}">${{n}}</span>`;
+    }}
+
+    const roundSelect = document.getElementById('round-select');
+    const fileSelect = document.getElementById('file-select');
+    const predList = document.getElementById('pred-list');
+    const predSummary = document.getElementById('pred-summary');
+    const predFileCaption = document.getElementById('pred-file-caption');
+    const predTitle = document.getElementById('pred-title');
+
+    function filesForRound(round) {{
+      return PREDICTIONS.filter(p => p.next_draw === Number(round));
+    }}
+
+    function renderFileOptions(round) {{
+      const files = filesForRound(round);
+      fileSelect.innerHTML = files.map(f =>
+        `<option value="${{f.file}}">${{f.generated_at.replace('T', ' ').slice(0, 16)}}</option>`
+      ).join('');
+    }}
+
+    function renderPrediction(round, filename) {{
+      const entry = PREDICTIONS.find(p => p.next_draw === Number(round) && p.file === filename);
+      if (!entry) return;
+      predTitle.textContent = `${{entry.next_draw}}회차 예측`;
+      predList.innerHTML = entry.predictions.map((combo, i) => `
+        <li class="pred-row">
+          <span class="set-idx">${{i + 1}}</span>
+          <span class="set-nums">${{combo.map(ballHtml).join(' ')}}</span>
+        </li>
+      `).join('');
+      predFileCaption.textContent = `예측 파일: ${{entry.file}}`;
+
+      const histEntry = HISTORY_BY_DRAW[entry.next_draw];
+      if (histEntry && histEntry.predictions_file === entry.file) {{
+        const best = Math.max(...histEntry.hits);
+        const badges = histEntry.hits.map(h => `<span class="accuracy-badge${{h === 0 ? ' dim' : ''}}">${{h}}개</span>`).join(' ');
+        predSummary.innerHTML = `${{histEntry.drwNo}}회차 결과 대비 5세트 적중 ${{badges}} (최고 ${{best}}개)`;
+      }} else if (entry.next_draw <= LATEST_DRWNO) {{
+        predSummary.textContent = '이 예측 파일 기준 적중 이력이 없습니다 (다른 파일로 집계됨).';
+      }} else {{
+        predSummary.textContent = '아직 추첨 전입니다 — 결과 발표 후 적중 이력이 집계됩니다.';
+      }}
+    }}
+
+    roundSelect.addEventListener('change', () => {{
+      renderFileOptions(roundSelect.value);
+      renderPrediction(roundSelect.value, fileSelect.value);
+    }});
+    fileSelect.addEventListener('change', () => {{
+      renderPrediction(roundSelect.value, fileSelect.value);
+    }});
+
+    renderFileOptions(roundSelect.value);
+    fileSelect.value = "{pred_filename}";
+    renderPrediction(roundSelect.value, fileSelect.value);
+"""
 
     if history:
         last = history[-1]
@@ -119,16 +218,24 @@ def render_summary(latest_draw: dict, pred_filename: str, pred_data: dict, histo
       <p class="ball-row">{latest_balls}</p>
 
       <section class="card">
-        <h2 class="h3">{next_draw}회차 예측</h2>
-        <p class="body-1" style="margin:0 0 12px">{last_hits_summary}</p>
-        <ul class="pred-list">
+        <div class="pred-header">
+          <h2 class="h3" id="pred-title">{next_draw}회차 예측</h2>
+          <div class="select-row">
+            <select id="round-select" aria-label="예측 회차 선택">
+{round_options}
+            </select>
+            <select id="file-select" aria-label="예측 파일 선택"></select>
+          </div>
+        </div>
+        <p class="body-1" id="pred-summary" style="margin:0 0 12px">{last_hits_summary}</p>
+        <ul class="pred-list" id="pred-list">
 {pred_rows}
         </ul>
-        <p class="caption">예측 파일: {pred_filename}</p>
+        <p class="caption" id="pred-file-caption">예측 파일: {pred_filename}</p>
       </section>
 {trend_section}
       <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>"""
-    return html, trend_script
+    return html, trend_script + pred_select_script
 
 
 def render_sidebar(reports: list[tuple[int, object, str]]) -> str:
@@ -167,8 +274,11 @@ def main() -> None:
     pred_filename, pred_data = load_latest_predictions()
     history = load_history()
     reports = list_reports()
+    all_predictions = load_all_predictions()
 
-    summary_html, trend_script = render_summary(latest_draw, pred_filename, pred_data, history)
+    summary_html, trend_script = render_summary(
+        latest_draw, pred_filename, pred_data, history, all_predictions
+    )
     sidebar_html = render_sidebar(reports)
     next_draw_label = f'{pred_data["based_on_drwNo"] + 1}회차 예측 기준'
 
@@ -322,10 +432,18 @@ def main() -> None:
   .draw-body li a.active {{ background: var(--blue-50); color: var(--blue-500); font-weight: 600; border-left-color: var(--blue-500); }}
 
   .main {{ flex: 1; overflow-y: auto; }}
-  #dashboard-view {{ max-width: 640px; margin: 0 auto; padding: 24px 20px 60px; }}
+  #dashboard-view {{ max-width: 640px; margin: 0 auto; padding: 24px 20px 64px; }}
   .card {{
     border: 1px solid var(--border-secondary); border-radius: 16px; box-shadow: var(--shadow-1);
     padding: 20px; margin-bottom: 16px;
+  }}
+  .pred-header {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }}
+  .pred-header .h3 {{ margin: 0; }}
+  .select-row {{ display: flex; gap: 8px; }}
+  .select-row select {{
+    font: inherit; font-size: 13px; font-weight: 600; color: var(--text-primary);
+    background: var(--grey-50); border: 1px solid var(--border-secondary); border-radius: 8px;
+    padding: 6px 10px; cursor: pointer;
   }}
   .ball-row {{ margin: 8px 0 24px; line-height: 1; display: flex; flex-wrap: wrap; gap: 6px; }}
   .number-ball {{
