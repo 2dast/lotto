@@ -415,12 +415,12 @@ def main() -> None:
 
   .main {{ flex: 1; overflow-y: auto; }}
   #dashboard-view {{
-    max-width: 720px; margin: 0 auto; padding: 20px; box-sizing: border-box;
-    display: flex; flex-direction: column; gap: 16px;
+    max-width: 1440px; margin: 0 auto; padding: 20px; box-sizing: border-box;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px;
   }}
   #dashboard-view[hidden] {{ display: none; }}
   .dash-footer {{
-    display: flex; gap: 16px; flex-wrap: wrap;
+    grid-column: 1 / -1; display: flex; gap: 16px; flex-wrap: wrap;
     padding-top: 16px; border-top: 1px solid var(--border-secondary);
   }}
   .dash-footer .footnote {{ margin: 0; }}
