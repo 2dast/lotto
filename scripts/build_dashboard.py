@@ -227,13 +227,26 @@ def render_sidebar(reports: list[tuple[int, object, str]]) -> str:
             f'{ts.strftime("%Y-%m-%d %H:%M")}</a></li>'
             for _, ts, name in group
         )
+        if gi == 0:
+            # 가장 최신 회차 그룹은 굳이 펼칠 필요가 없으므로 아코디언 없이 항상 열어둔다.
+            sections.append(f"""        <li class="draw-group">
+          <div class="draw-header draw-header-static">
+            <span class="draw-label">{next_draw}회차 예측</span>
+            <span class="draw-count">{len(group)}</span>
+          </div>
+          <ul class="draw-body draw-body-static">
+{items}
+          </ul>
+        </li>""")
+            continue
+
         sections.append(f"""        <li class="draw-group{' is-hidden' if hidden_group else ''}">
-          <button class="draw-header" type="button" aria-expanded="{'true' if gi == 0 else 'false'}">
+          <button class="draw-header" type="button" aria-expanded="false">
             <span class="chevron">&#9656;</span>
             <span class="draw-label">{next_draw}회차 예측</span>
             <span class="draw-count">{len(group)}</span>
           </button>
-          <ul class="draw-body"{' data-open="true"' if gi == 0 else ''}>
+          <ul class="draw-body">
 {items}
           </ul>
         </li>""")
@@ -398,10 +411,13 @@ def main() -> None:
   .draw-header:hover {{ background: var(--grey-100); }}
   .draw-header .chevron {{ font-size: 10px; color: var(--grey-400); transition: transform 200ms cubic-bezier(0.16,1,0.3,1); flex: none; }}
   .draw-header[aria-expanded="true"] .chevron {{ transform: rotate(90deg); }}
+  .draw-header-static {{ cursor: default; }}
+  .draw-header-static:hover {{ background: none; }}
   .draw-label {{ flex: 1; font-size: 12.5px; font-weight: 600; }}
   .draw-count {{ font-size: 10.5px; color: var(--text-secondary); background: var(--grey-100); border-radius: 999px; padding: 1px 7px; }}
   .draw-body {{ list-style: none; margin: 0; padding: 0; max-height: 0; overflow: hidden; transition: max-height 200ms cubic-bezier(0.16,1,0.3,1); }}
   .draw-body[data-open="true"] {{ max-height: 400px; }}
+  .draw-body-static {{ max-height: none; overflow: visible; }}
   .draw-body li a {{ display: block; padding: 6px 10px 6px 27px; font-size: 12.5px; text-decoration: none; color: var(--text-secondary); border-radius: 12px; margin: 1px 4px; border-left: 3px solid transparent; }}
   .draw-body li a:hover {{ background: var(--grey-100); }}
   .draw-body li a.active {{ background: var(--blue-50); color: var(--blue-500); font-weight: 600; border-left-color: var(--blue-500); }}
@@ -534,7 +550,7 @@ document.querySelectorAll('.draw-body a').forEach(a => {{
   }});
 }});
 
-document.querySelectorAll('.draw-header').forEach(btn => {{
+document.querySelectorAll('button.draw-header').forEach(btn => {{
   btn.addEventListener('click', () => {{
     const open = btn.getAttribute('aria-expanded') === 'true';
     btn.setAttribute('aria-expanded', open ? 'false' : 'true');
