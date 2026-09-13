@@ -220,7 +220,6 @@ svg text { fill: var(--text-secondary); font-size: 10px; font-family: inherit; }
 svg .axis-line { stroke: var(--rule); stroke-width: 1; }
 .strip-dot { fill: var(--navy); }
 .strip-row-label { fill: var(--text-muted); font-size: 10px; }
-.coverage-bar { fill: var(--navy); opacity: 0.75; }
 
 .disclaimer {
   color: var(--text-muted);
@@ -302,10 +301,9 @@ svg .axis-line { stroke: var(--rule); stroke-width: 1; }
   </section>
 
   <section>
-    <h2><span class="roman">Ⅲ.</span> 번호 분포 및 세트 간 중복</h2>
-    <p class="section-desc">추천 세트별로 뽑힌 번호의 위치(1~45)와, 번호별로 몇 개 세트에 중복 포함됐는지를 보여준다.</p>
+    <h2><span class="roman">Ⅲ.</span> 세트별 번호 분포</h2>
+    <p class="section-desc">Y축의 각 행은 추천 세트 번호(1~<span id="f-numsets3">5</span>)이며, 가로 위치는 그 세트에 포함된 번호(1~45)를 나타낸다.</p>
     <svg viewBox="0 0 680 160" width="100%" height="160" id="chart-strip"></svg>
-    <svg viewBox="0 0 680 110" width="100%" height="110" id="chart-coverage"></svg>
   </section>
 
   <div class="disclaimer">
@@ -358,9 +356,15 @@ function zoneCount(combo, lo, hi) { return combo.filter(n => n >= lo && n <= hi)
   });
 
   document.getElementById("f-numsets").textContent = DATA.predictions.length;
+  document.getElementById("f-numsets3").textContent = DATA.predictions.length;
+
+  const counts = new Array(45).fill(0);
+  DATA.predictions.forEach(combo => combo.forEach(num => counts[num - 1]++));
+  document.getElementById("f-maxoverlap").textContent = Math.max(...counts, 1);
 })();
 
-// 세트별 번호 분포 스트립: 1~45 축 위에 세트별로 뽑힌 번호를 점으로 표시
+// 세트별 번호 분포 스트립: 1~45 축 위에 세트별로 뽑힌 번호를 점으로 표시하고,
+// Y축엔 "세트" 라벨을, 각 점에는 정확한 번호를 직접 붙인다.
 (function(){
   const svg = document.getElementById("chart-strip");
   const W = 680, H = 160;
@@ -368,6 +372,11 @@ function zoneCount(combo, lo, hi) { return combo.filter(n => n >= lo && n <= hi)
   const plotW = W - padL - padR;
   const x = n => padL + ((n - 1) / 44) * plotW;
   const rowH = (H - padT - padB) / DATA.predictions.length;
+
+  const axisTitle = svgEl("text", {x: 4, y: padT - 2, "text-anchor": "start"});
+  axisTitle.setAttribute("class", "strip-row-label");
+  axisTitle.textContent = "세트";
+  svg.appendChild(axisTitle);
 
   svg.appendChild(svgEl("line", {x1: padL, y1: H - padB, x2: W - padR, y2: H - padB, class: "axis-line"}));
   [1, 10, 20, 30, 40, 45].forEach(n => {
@@ -384,37 +393,12 @@ function zoneCount(combo, lo, hi) { return combo.filter(n => n >= lo && n <= hi)
     svg.appendChild(lbl);
     combo.forEach(n => {
       svg.appendChild(svgEl("circle", {cx: x(n), cy, r: 3.5, class: "strip-dot"}));
+      const numLbl = svgEl("text", {x: x(n), y: cy - 6, "text-anchor": "middle"});
+      numLbl.setAttribute("class", "value-label");
+      numLbl.textContent = n;
+      svg.appendChild(numLbl);
     });
   });
 })();
 
-// 번호별 중복 커버리지: 1~45 각 번호가 몇 개 세트에 포함됐는지
-(function(){
-  const svg = document.getElementById("chart-coverage");
-  const W = 680, H = 110;
-  const padL = 28, padR = 12, padT = 14, padB = 24;
-  const plotW = W - padL - padR, plotH = H - padT - padB;
-  const n = 45;
-  const gap = 1.5;
-  const barW = (plotW - gap * (n - 1)) / n;
-
-  const counts = new Array(45).fill(0);
-  DATA.predictions.forEach(combo => combo.forEach(num => counts[num - 1]++));
-  const maxV = Math.max(...counts, 1);
-  document.getElementById("f-maxoverlap").textContent = maxV;
-
-  svg.appendChild(svgEl("line", {x1: padL, y1: H - padB, x2: W - padR, y2: H - padB, class: "axis-line"}));
-  counts.forEach((c, i) => {
-    const num = i + 1;
-    const x = padL + i * (barW + gap);
-    const h = (c / maxV) * plotH;
-    const y = H - padB - h;
-    svg.appendChild(svgEl("rect", {x, y, width: barW, height: Math.max(h, 1), class: "coverage-bar"}));
-    if (num % 5 === 0 || num === 1) {
-      const t = svgEl("text", {x: x + barW / 2, y: H - padB + 13, "text-anchor": "middle"});
-      t.textContent = num;
-      svg.appendChild(t);
-    }
-  });
-})();
 </script>
