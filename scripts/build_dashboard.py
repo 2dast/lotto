@@ -201,14 +201,6 @@ def render_summary(
 
     html = f"""
       <section class="card dash-left">
-        <h2 class="h3">최근 5회차 당첨결과</h2>
-        <ul class="recent-list">
-{recent_rows}
-        </ul>
-        <p class="caption">{dday_label}</p>
-      </section>
-
-      <section class="card dash-right">
         <div class="pred-header">
           <h2 class="h3" id="pred-title">{next_draw}회차 예측</h2>
           <div class="select-row">
@@ -222,6 +214,14 @@ def render_summary(
         <ul class="pred-list" id="pred-list"></ul>
         <p class="caption" id="pred-file-caption">예측 파일: {pred_filename}</p>
         <p class="caption">스크리닝 조건: {rules_line}</p>
+      </section>
+
+      <section class="card dash-right">
+        <h2 class="h3">최근 5회차 당첨결과</h2>
+        <ul class="recent-list">
+{recent_rows}
+        </ul>
+        <p class="caption">{dday_label}</p>
       </section>
 
       <div class="dash-footer">
