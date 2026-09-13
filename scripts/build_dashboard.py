@@ -200,7 +200,7 @@ def render_summary(
 """
 
     html = f"""
-      <section class="card">
+      <section class="card dash-left">
         <h2 class="h3">최근 5회차 당첨결과</h2>
         <ul class="recent-list">
 {recent_rows}
@@ -208,7 +208,7 @@ def render_summary(
         <p class="caption">{dday_label}</p>
       </section>
 
-      <section class="card">
+      <section class="card dash-right">
         <div class="pred-header">
           <h2 class="h3" id="pred-title">{next_draw}회차 예측</h2>
           <div class="select-row">
@@ -224,8 +224,10 @@ def render_summary(
         <p class="caption">스크리닝 조건: {rules_line}</p>
       </section>
 
-      <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>
-      <p class="footnote">마지막 갱신: {generated_at_label} (KST, GitHub Actions 자동 실행)</p>"""
+      <div class="dash-footer">
+        <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>
+        <p class="footnote">마지막 갱신: {generated_at_label} (KST, GitHub Actions 자동 실행)</p>
+      </div>"""
     return html, shared_script
 
 
@@ -400,6 +402,9 @@ def main() -> None:
       z-index: 15; opacity: 0; pointer-events: none; transition: opacity 200ms ease;
     }}
     .sidebar-backdrop.is-open {{ opacity: 1; pointer-events: auto; }}
+    .main {{ overflow-y: auto; }}
+    #dashboard-view {{ height: auto; grid-template-columns: 1fr; grid-template-rows: auto auto auto; }}
+    .dash-left, .dash-right {{ grid-column: 1; overflow-y: visible; }}
   }}
   .sidebar-title {{ font-size: 12px; font-weight: 700; color: var(--text-tertiary); letter-spacing: 0.02em; padding: 16px 16px 8px; margin: 0; }}
   .sidebar > ul {{ list-style: none; margin: 0; padding: 8px 8px 12px; }}
@@ -425,11 +430,18 @@ def main() -> None:
   .draw-body li a:hover {{ background: var(--grey-100); }}
   .draw-body li a.active {{ background: var(--blue-50); color: var(--blue-500); font-weight: 600; border-left-color: var(--blue-500); }}
 
-  .main {{ flex: 1; overflow-y: auto; }}
-  #dashboard-view {{ max-width: 640px; margin: 0 auto; padding: 24px 20px 64px; }}
+  .main {{ flex: 1; overflow: hidden; }}
+  #dashboard-view {{
+    height: 100%; max-width: 1120px; margin: 0 auto; padding: 20px; box-sizing: border-box;
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 12px;
+  }}
+  .dash-left {{ grid-column: 1; min-height: 0; overflow-y: auto; }}
+  .dash-right {{ grid-column: 2; min-height: 0; overflow-y: auto; }}
+  .dash-footer {{ grid-column: 1 / -1; display: flex; gap: 16px; flex-wrap: wrap; }}
+  .dash-footer .footnote {{ margin: 0; }}
   .card {{
     border: 1px solid var(--border-secondary); border-radius: 16px; box-shadow: var(--shadow-1);
-    padding: 20px; margin-bottom: 16px;
+    padding: 20px; margin-bottom: 0;
   }}
   .pred-header {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }}
   .pred-header .h3 {{ margin: 0; }}
