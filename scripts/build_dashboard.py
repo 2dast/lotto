@@ -404,9 +404,8 @@ def main() -> None:
       z-index: 15; opacity: 0; pointer-events: none; transition: opacity 200ms ease;
     }}
     .sidebar-backdrop.is-open {{ opacity: 1; pointer-events: auto; }}
-    .main {{ overflow-y: auto; }}
-    #dashboard-view {{ height: auto; grid-template-columns: 1fr; grid-template-rows: auto auto auto; }}
-    .dash-left, .dash-right {{ grid-column: 1; overflow-y: visible; }}
+    #dashboard-view {{ grid-template-columns: 1fr; }}
+    .dash-left, .dash-right {{ grid-column: 1; }}
   }}
   .sidebar-title {{ font-size: 12px; font-weight: 700; color: var(--text-tertiary); letter-spacing: 0.02em; padding: 16px 16px 8px; margin: 0; }}
   .sidebar > ul {{ list-style: none; margin: 0; padding: 8px 8px 12px; }}
@@ -432,22 +431,22 @@ def main() -> None:
   .draw-body li a:hover {{ background: var(--grey-100); }}
   .draw-body li a.active {{ background: var(--blue-50); color: var(--blue-500); font-weight: 600; border-left-color: var(--blue-500); }}
 
-  .main {{ flex: 1; overflow: hidden; }}
+  .main {{ flex: 1; overflow-y: auto; }}
   #dashboard-view {{
-    height: 100%; max-width: 1120px; margin: 0 auto; padding: 16px; box-sizing: border-box;
-    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 10px;
+    max-width: 1120px; margin: 0 auto; padding: 20px; box-sizing: border-box;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
   }}
   #dashboard-view[hidden] {{ display: none; }}
-  .dash-left {{ grid-column: 1; min-height: 0; overflow-y: auto; }}
-  .dash-right {{ grid-column: 2; min-height: 0; overflow-y: auto; }}
+  .dash-left {{ grid-column: 1; }}
+  .dash-right {{ grid-column: 2; }}
   .dash-footer {{ grid-column: 1 / -1; display: flex; gap: 16px; flex-wrap: wrap; }}
   .dash-footer .footnote {{ margin: 0; }}
   .card {{
     border: 1px solid var(--border-secondary); border-radius: 16px; box-shadow: var(--shadow-1);
-    padding: 16px; margin-bottom: 0;
+    padding: 20px; margin-bottom: 0;
   }}
-  .card .h3 {{ margin-bottom: 8px; }}
-  .pred-header {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }}
+  .card .h3 {{ margin-bottom: 12px; }}
+  .pred-header {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }}
   .pred-header .h3 {{ margin: 0; }}
   .select-row {{ display: flex; gap: 8px; }}
   .select-row select {{
@@ -468,14 +467,14 @@ def main() -> None:
   .number-ball.hit {{ outline: 2px solid var(--green-500); outline-offset: 1px; }}
 
   ul.pred-list {{ list-style: none; margin: 0; padding: 0; }}
-  .pred-row {{ display: flex; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border-secondary); }}
+  .pred-row {{ display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); }}
   .pred-row:last-child {{ border-bottom: none; }}
   .set-idx {{ color: var(--text-tertiary); width: 16px; font-size: 12px; font-weight: 500; flex: none; }}
   .set-nums {{ line-height: 1; }}
   .set-nums .number-ball {{ width: 28px; height: 28px; font-size: 13px; margin-right: 4px; }}
 
   .recent-list {{ list-style: none; margin: 0; padding: 0; overflow-x: auto; }}
-  .recent-row {{ display: flex; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border-secondary); flex-wrap: nowrap; white-space: nowrap; }}
+  .recent-row {{ display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); flex-wrap: nowrap; white-space: nowrap; }}
   .recent-row:last-child {{ border-bottom: none; }}
   .recent-no {{ font-size: 13px; font-weight: 700; width: 40px; flex: none; }}
   .recent-date {{ font-size: 12px; color: var(--text-tertiary); width: 80px; flex: none; }}
