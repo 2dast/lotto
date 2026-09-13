@@ -87,10 +87,14 @@ def recent_draws_rows(draws: list[dict], n: int = 5) -> str:
         amount = d.get("firstPrizeAmount")
         amount_label = f'{amount:,}원' if amount is not None else "정보 없음"
         rows.append(f"""          <li class="recent-row">
-            <span class="recent-no table-numeric">{d["drwNo"]}회</span>
-            <span class="recent-date table-numeric">{d["date"]}</span>
-            <span class="recent-balls">{balls}</span>
-            <span class="recent-amount table-numeric">1등 {amount_label}</span>
+            <div class="recent-line">
+              <span class="recent-no table-numeric">{d["drwNo"]}회</span>
+              <span class="recent-balls">{balls}</span>
+            </div>
+            <div class="recent-line">
+              <span class="recent-date table-numeric">{d["date"]}</span>
+              <span class="recent-amount table-numeric">1등 {amount_label}</span>
+            </div>
           </li>""")
     return "\n".join(rows)
 
@@ -470,13 +474,14 @@ def main() -> None:
   .set-nums .number-ball {{ width: 28px; height: 28px; font-size: 13px; margin-right: 4px; }}
 
   .recent-list {{ list-style: none; margin: 0; padding: 0; }}
-  .recent-row {{ display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); flex-wrap: wrap; }}
+  .recent-row {{ display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); }}
   .recent-row:last-child {{ border-bottom: none; }}
-  .recent-no {{ font-size: 13px; font-weight: 700; width: 40px; flex: none; }}
-  .recent-date {{ font-size: 12px; color: var(--text-tertiary); width: 80px; flex: none; }}
-  .recent-balls {{ line-height: 1; flex: none; }}
+  .recent-line {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; }}
+  .recent-no {{ font-size: 13px; font-weight: 700; flex: none; }}
+  .recent-date {{ font-size: 12px; color: var(--text-tertiary); flex: none; }}
+  .recent-balls {{ line-height: 1; }}
   .recent-balls .number-ball {{ width: 26px; height: 26px; font-size: 12px; margin-right: 4px; }}
-  .recent-amount {{ font-size: 12.5px; font-weight: 600; color: var(--text-secondary); margin-left: auto; flex: none; }}
+  .recent-amount {{ font-size: 12.5px; font-weight: 600; color: var(--text-secondary); flex: none; }}
 
   .accuracy-badge {{
     display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 10px;
