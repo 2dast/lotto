@@ -473,8 +473,8 @@ def main() -> None:
   .set-nums {{ line-height: 1; }}
   .set-nums .number-ball {{ width: 28px; height: 28px; font-size: 13px; margin-right: 4px; }}
 
-  .recent-list {{ list-style: none; margin: 0; padding: 0; overflow-x: auto; }}
-  .recent-row {{ display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); flex-wrap: nowrap; white-space: nowrap; }}
+  .recent-list {{ list-style: none; margin: 0; padding: 0; }}
+  .recent-row {{ display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); flex-wrap: wrap; }}
   .recent-row:last-child {{ border-bottom: none; }}
   .recent-no {{ font-size: 13px; font-weight: 700; width: 40px; flex: none; }}
   .recent-date {{ font-size: 12px; color: var(--text-tertiary); width: 80px; flex: none; }}
