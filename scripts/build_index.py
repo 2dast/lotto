@@ -64,7 +64,18 @@ def render_index(reports):
         f'더보기 ({remaining}개 회차)</button>\n' if remaining > 0 else ""
     )
 
+    theme_toggle_svg = """<svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>"""
+
     return f"""<title>로또 분석 리포트</title>
+<script>
+(function(){{
+  try {{
+    const saved = localStorage.getItem('lotto-theme');
+    if (saved === 'dark' || saved === 'light') document.documentElement.dataset.theme = saved;
+  }} catch (e) {{}}
+}})();
+</script>
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
   :root {{
@@ -84,7 +95,7 @@ def render_index(reports):
     --shadow-1: 0 1px 2px oklch(0.155 0.060 261 / 0.06), 0 1px 1px oklch(0.155 0.060 261 / 0.04);
   }}
   @media (prefers-color-scheme: dark) {{
-    :root {{
+    :root:not([data-theme="light"]) {{
       color-scheme: dark;
       --blue-500: #6f8fb8;
       --blue-50:  #24344a;
@@ -97,6 +108,19 @@ def render_index(reports):
       --white:    #16171a;
       --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 1px rgba(0, 0, 0, 0.20);
     }}
+  }}
+  :root[data-theme="dark"] {{
+    color-scheme: dark;
+    --blue-500: #6f8fb8;
+    --blue-50:  #24344a;
+    --grey-900: #ecebe6;
+    --grey-700: #b7b6ac;
+    --grey-400: #85847a;
+    --grey-200: #35363a;
+    --grey-100: #232428;
+    --grey-50:  #1d1e21;
+    --white:    #16171a;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 1px rgba(0, 0, 0, 0.20);
   }}
   * {{ box-sizing: border-box; }}
   body {{
@@ -116,10 +140,28 @@ def render_index(reports):
   .menu-btn svg {{ width: 20px; height: 20px; }}
   .sidebar-backdrop {{ display: none; }}
 
+  .theme-btn {{
+    flex: none; width: 36px; height: 36px; border: none; background: none; color: var(--text-secondary);
+    border-radius: 12px; cursor: pointer; align-items: center; justify-content: center; display: flex;
+  }}
+  .theme-btn:hover {{ background: var(--grey-100); }}
+  .theme-btn svg {{ width: 18px; height: 18px; }}
+  .theme-btn .icon-moon {{ display: none; }}
+  :root[data-theme="dark"] .theme-btn .icon-sun {{ display: none; }}
+  :root[data-theme="dark"] .theme-btn .icon-moon {{ display: block; }}
+  @media (prefers-color-scheme: dark) {{
+    :root:not([data-theme="light"]) .theme-btn .icon-sun {{ display: none; }}
+    :root:not([data-theme="light"]) .theme-btn .icon-moon {{ display: block; }}
+  }}
+
   .layout {{ display: flex; height: 100vh; flex-direction: column; }}
   .layout-body {{ display: flex; flex: 1; min-height: 0; }}
   .sidebar {{ width: 260px; flex: none; overflow-y: auto; border-right: 1px solid var(--border-secondary); background: var(--grey-50); }}
-  .sidebar h1 {{ height: 56px; display: flex; align-items: center; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; padding: 0 16px; margin: 0; border-bottom: 1px solid var(--border-secondary); }}
+  .sidebar h1 {{
+    height: 56px; display: flex; align-items: center; justify-content: space-between;
+    font-size: 18px; font-weight: 600; letter-spacing: -0.01em; padding: 0 8px 0 16px; margin: 0;
+    border-bottom: 1px solid var(--border-secondary);
+  }}
   .sidebar > ul {{ list-style: none; margin: 0; padding: 8px 8px 12px; }}
 
   @media (max-width: 768px) {{
@@ -184,12 +226,20 @@ def render_index(reports):
     <button class="menu-btn" id="menu-btn" type="button" aria-label="리포트 목록 열기" aria-expanded="false" aria-controls="sidebar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
     </button>
-    <span class="title-1">리포트</span>
+    <span class="title-1" style="flex:1">리포트</span>
+    <button class="theme-btn" id="theme-btn-mobile" type="button" aria-label="다크 모드 전환">
+      {theme_toggle_svg}
+    </button>
   </header>
   <div class="layout-body">
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
     <nav class="sidebar" id="sidebar">
-      <h1>리포트</h1>
+      <h1>
+        <span>리포트</span>
+        <button class="theme-btn" id="theme-btn-desktop" type="button" aria-label="다크 모드 전환">
+          {theme_toggle_svg}
+        </button>
+      </h1>
       <ul id="group-list">
 {items}
       </ul>
@@ -201,6 +251,27 @@ def render_index(reports):
 const sidebar = document.getElementById('sidebar');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
 const menuBtn = document.getElementById('menu-btn');
+const viewer = document.getElementById('viewer');
+
+function currentTheme() {{
+  return document.documentElement.dataset.theme
+    || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+}}
+function syncIframeTheme() {{
+  try {{
+    const doc = viewer.contentDocument;
+    if (doc && doc.documentElement) doc.documentElement.dataset.theme = currentTheme();
+  }} catch (e) {{}}
+}}
+function toggleTheme() {{
+  const next = currentTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try {{ localStorage.setItem('lotto-theme', next); }} catch (e) {{}}
+  syncIframeTheme();
+}}
+document.getElementById('theme-btn-desktop').addEventListener('click', toggleTheme);
+document.getElementById('theme-btn-mobile').addEventListener('click', toggleTheme);
+viewer.addEventListener('load', syncIframeTheme);
 
 function closeSidebar() {{
   sidebar.classList.remove('is-open');

@@ -173,6 +173,14 @@ def main() -> None:
     next_draw_label = f'{pred_data["based_on_drwNo"] + 1}회차 예측 기준'
 
     html = f"""<title>로또 대시보드</title>
+<script>
+(function(){{
+  try {{
+    const saved = localStorage.getItem('lotto-theme');
+    if (saved === 'dark' || saved === 'light') document.documentElement.dataset.theme = saved;
+  }} catch (e) {{}}
+}})();
+</script>
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
   :root {{
@@ -200,7 +208,7 @@ def main() -> None:
     --shadow-1: 0 1px 2px oklch(0.155 0.060 261 / 0.06), 0 1px 1px oklch(0.155 0.060 261 / 0.04);
   }}
   @media (prefers-color-scheme: dark) {{
-    :root {{
+    :root:not([data-theme="light"]) {{
       color-scheme: dark;
       --blue-500: #6f8fb8;
       --blue-50:  #24344a;
@@ -216,6 +224,22 @@ def main() -> None:
       --text-tertiary: rgba(236, 235, 230, 0.58);
       --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 1px rgba(0, 0, 0, 0.20);
     }}
+  }}
+  :root[data-theme="dark"] {{
+    color-scheme: dark;
+    --blue-500: #6f8fb8;
+    --blue-50:  #24344a;
+    --grey-900: #ecebe6;
+    --grey-700: #b7b6ac;
+    --grey-400: #85847a;
+    --grey-200: #35363a;
+    --grey-100: #232428;
+    --grey-50:  #1d1e21;
+    --white:    #16171a;
+    --red-500:  #d9736b;
+    --green-500: #4fa688;
+    --text-tertiary: rgba(236, 235, 230, 0.58);
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 1px rgba(0, 0, 0, 0.20);
   }}
   * {{ box-sizing: border-box; }}
   body {{
@@ -240,6 +264,19 @@ def main() -> None:
   }}
   .menu-btn:hover {{ background: var(--grey-100); }}
   .menu-btn svg {{ width: 20px; height: 20px; }}
+  .theme-btn {{
+    flex: none; width: 36px; height: 36px; border: none; background: none; color: var(--text-secondary);
+    border-radius: 12px; cursor: pointer; align-items: center; justify-content: center; display: flex;
+  }}
+  .theme-btn:hover {{ background: var(--grey-100); }}
+  .theme-btn svg {{ width: 18px; height: 18px; }}
+  .theme-btn .icon-moon {{ display: none; }}
+  :root[data-theme="dark"] .theme-btn .icon-sun {{ display: none; }}
+  :root[data-theme="dark"] .theme-btn .icon-moon {{ display: block; }}
+  @media (prefers-color-scheme: dark) {{
+    :root:not([data-theme="light"]) .theme-btn .icon-sun {{ display: none; }}
+    :root:not([data-theme="light"]) .theme-btn .icon-moon {{ display: block; }}
+  }}
   .sidebar-backdrop {{ display: none; }}
 
   .layout {{ display: flex; height: calc(100vh - 56px); position: relative; }}
@@ -323,7 +360,11 @@ def main() -> None:
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
   </button>
   <span class="title-1">로또 대시보드</span>
-  <span class="caption">{next_draw_label}</span>
+  <span class="caption" style="flex:1">{next_draw_label}</span>
+  <button class="theme-btn" id="theme-btn" type="button" aria-label="다크 모드 전환">
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
 </header>
 <div class="layout">
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
@@ -352,6 +393,25 @@ const navLinks = [homeLink, ...document.querySelectorAll('.draw-body a')];
 const sidebar = document.getElementById('sidebar');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
 const menuBtn = document.getElementById('menu-btn');
+const themeBtn = document.getElementById('theme-btn');
+
+function currentTheme() {{
+  return document.documentElement.dataset.theme
+    || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+}}
+function syncIframeTheme() {{
+  try {{
+    const doc = viewer.contentDocument;
+    if (doc && doc.documentElement) doc.documentElement.dataset.theme = currentTheme();
+  }} catch (e) {{}}
+}}
+themeBtn.addEventListener('click', () => {{
+  const next = currentTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try {{ localStorage.setItem('lotto-theme', next); }} catch (e) {{}}
+  syncIframeTheme();
+}});
+viewer.addEventListener('load', syncIframeTheme);
 
 function closeSidebar() {{
   sidebar.classList.remove('is-open');
