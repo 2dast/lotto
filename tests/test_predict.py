@@ -15,14 +15,18 @@ def test_odd_even_ratio_rejects_all_even():
     assert not passes_filters(combo, FILTERS)
 
 
-def test_40s_zone_requires_exactly_one():
-    # 40번대 없음 -> 거부
-    combo_no_40s = [1, 10, 20, 30, 5, 15]
-    assert not passes_filters(combo_no_40s, FILTERS)
+def test_40s_zone_allows_up_to_two():
+    # 40번대 없음 -> 허용 (0~2개 허용)
+    combo_no_40s = [3, 10, 20, 21, 29, 34]
+    assert passes_filters(combo_no_40s, FILTERS)
 
-    # 40번대 2개 -> 거부
+    # 40번대 2개 -> 허용
     combo_two_40s = [40, 41, 1, 10, 20, 30]
-    assert not passes_filters(combo_two_40s, FILTERS)
+    assert passes_filters(combo_two_40s, FILTERS)
+
+    # 40번대 3개 -> 거부
+    combo_three_40s = [40, 41, 42, 1, 10, 20]
+    assert not passes_filters(combo_three_40s, FILTERS)
 
 
 def test_valid_combo_passes():
@@ -32,7 +36,7 @@ def test_valid_combo_passes():
 
 
 def test_max_consecutive_exceeded():
-    combo = [1, 12, 13, 14, 30, 41]
+    combo = [1, 12, 13, 14, 15, 30]
     assert not passes_filters(combo, FILTERS)
 
 

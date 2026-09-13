@@ -7,28 +7,51 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from collect import collect_new_draws  # noqa: E402
 
 
-def test_collect_new_draws_stops_on_fail_response():
-    existing = [{"drwNo": 1, "date": "2002-12-07", "numbers": [1, 2, 3, 4, 5, 6], "bonusNo": 7}]
-
-    responses = {
-        2: {"drwNo": 2, "date": "2002-12-14", "numbers": [10, 11, 12, 13, 14, 15], "bonusNo": 16},
-        3: None,  # 아직 발표 안 됨
+def make_item(ltEpsd: int) -> dict:
+    return {
+        "ltEpsd": ltEpsd,
+        "tm1WnNo": 1, "tm2WnNo": 2, "tm3WnNo": 3,
+        "tm4WnNo": 4, "tm5WnNo": 5, "tm6WnNo": 6,
+        "bnsWnNo": 7,
+        "ltRflYmd": "20260101",
     }
 
-    def fake_fetch(drw_no):
-        return responses.get(drw_no)
 
-    with patch("collect.fetch_draw", side_effect=fake_fetch):
+def test_collect_new_draws_single_partial_page():
+    existing = [{"drwNo": 1, "date": "2002-12-07", "numbers": [1, 2, 3, 4, 5, 6], "bonusNo": 7}]
+
+    # cursor=12 요청 시 2번 회차 딱 하나만 존재 (전체 페이지 아님 -> 더 없음으로 판단)
+    def fake_fetch_page(cursor):
+        if cursor == 12:
+            return [make_item(2)]
+        return []
+
+    with patch("collect.fetch_page", side_effect=fake_fetch_page):
         new_draws = collect_new_draws(existing)
 
-    assert len(new_draws) == 1
-    assert new_draws[0]["drwNo"] == 2
+    assert [d["drwNo"] for d in new_draws] == [2]
 
 
 def test_collect_new_draws_no_new_data():
     existing = [{"drwNo": 5, "date": "x", "numbers": [1, 2, 3, 4, 5, 6], "bonusNo": 7}]
 
-    with patch("collect.fetch_draw", return_value=None):
+    with patch("collect.fetch_page", return_value=[]):
         new_draws = collect_new_draws(existing)
 
     assert new_draws == []
+
+
+def test_collect_new_draws_paginates_over_full_pages():
+    existing: list[dict] = []  # last_drw_no=0 -> 첫 cursor=11
+
+    def fake_fetch_page(cursor):
+        if cursor == 11:
+            return [make_item(n) for n in range(10, 0, -1)]  # 1~10, full page
+        if cursor == 21:
+            return [make_item(n) for n in range(15, 10, -1)]  # 11~15만 존재, partial page
+        return []
+
+    with patch("collect.fetch_page", side_effect=fake_fetch_page):
+        new_draws = collect_new_draws(existing)
+
+    assert [d["drwNo"] for d in new_draws] == list(range(1, 16))
