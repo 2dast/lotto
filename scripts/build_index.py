@@ -65,13 +65,31 @@ def render_index(reports):
     )
 
     return f"""<title>로또 분석 리포트</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
+  :root {{
+    --blue-500: oklch(0.624 0.176 254);
+    --blue-50:  oklch(0.965 0.020 250);
+    --grey-900: oklch(0.234 0.030 254);
+    --grey-700: oklch(0.452 0.028 253);
+    --grey-400: oklch(0.752 0.016 251);
+    --grey-200: oklch(0.913 0.008 247);
+    --grey-100: oklch(0.957 0.005 247);
+    --grey-50:  oklch(0.978 0.003 247);
+    --white:    oklch(1.000 0.000 0);
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --border-secondary: var(--grey-200);
+  }}
   * {{ box-sizing: border-box; }}
-  body {{ margin: 0; font-family: "Pretendard", "Noto Sans KR", system-ui, sans-serif; }}
+  body {{
+    margin: 0; color: var(--text-primary);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }}
   .layout {{ display: flex; height: 100vh; }}
-  .sidebar {{ width: 260px; flex: none; overflow-y: auto; border-right: 1px solid #e4e2da; background: #fbfaf7; }}
-  .sidebar h1 {{ font-size: 13px; font-weight: 700; color: #1c1c1c; padding: 16px 16px 10px; margin: 0; letter-spacing: 0.01em; }}
-  .sidebar > ul {{ list-style: none; margin: 0; padding: 0 8px 12px; }}
+  .sidebar {{ width: 260px; flex: none; overflow-y: auto; border-right: 1px solid var(--border-secondary); background: var(--grey-50); }}
+  .sidebar h1 {{ height: 56px; display: flex; align-items: center; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; padding: 0 16px; margin: 0; border-bottom: 1px solid var(--border-secondary); }}
+  .sidebar > ul {{ list-style: none; margin: 0; padding: 8px 8px 12px; }}
 
   .draw-group {{ margin-bottom: 2px; }}
   .draw-group.is-hidden {{ display: none; }}
@@ -79,38 +97,38 @@ def render_index(reports):
   .draw-header {{
     width: 100%; display: flex; align-items: center; gap: 8px;
     background: none; border: none; cursor: pointer;
-    padding: 8px 8px; border-radius: 6px; font: inherit; text-align: left;
+    padding: 8px 8px; border-radius: 12px; font: inherit; text-align: left;
   }}
-  .draw-header:hover {{ background: #f0efe8; }}
+  .draw-header:hover {{ background: var(--grey-100); }}
   .draw-header .chevron {{
-    font-size: 10px; color: #9a9a90; transition: transform 0.15s ease; flex: none;
+    font-size: 10px; color: var(--grey-400); transition: transform 200ms cubic-bezier(0.16,1,0.3,1); flex: none;
   }}
   .draw-header[aria-expanded="true"] .chevron {{ transform: rotate(90deg); }}
-  .draw-label {{ flex: 1; font-size: 12.5px; font-weight: 600; color: #2a2a26; }}
+  .draw-label {{ flex: 1; font-size: 12.5px; font-weight: 600; }}
   .draw-count {{
-    font-size: 10.5px; color: #8a8878; background: #ecebe3; border-radius: 10px;
+    font-size: 10.5px; color: var(--text-secondary); background: var(--grey-100); border-radius: 999px;
     padding: 1px 7px; font-variant-numeric: tabular-nums;
   }}
 
   .draw-body {{
     list-style: none; margin: 0; padding: 0;
-    max-height: 0; overflow: hidden; transition: max-height 0.2s ease;
+    max-height: 0; overflow: hidden; transition: max-height 200ms cubic-bezier(0.16,1,0.3,1);
   }}
   .draw-body[data-open="true"] {{ max-height: 400px; }}
   .draw-body li a {{
     display: block; padding: 6px 10px 6px 30px; font-size: 12.5px;
-    text-decoration: none; color: #55534a; border-radius: 6px; margin: 1px 4px;
+    text-decoration: none; color: var(--text-secondary); border-radius: 12px; margin: 1px 4px;
     font-variant-numeric: tabular-nums;
   }}
-  .draw-body li a:hover {{ background: #f0efe8; }}
-  .draw-body li a.active {{ background: #1f3a5f; color: #fff; font-weight: 600; }}
+  .draw-body li a:hover {{ background: var(--grey-100); }}
+  .draw-body li a.active {{ background: var(--blue-500); color: var(--white); font-weight: 600; }}
 
   #more-btn {{
     width: calc(100% - 8px); margin: 8px 4px 0; padding: 9px;
-    border: 1px dashed #d8d6c8; border-radius: 6px; background: none;
-    font-size: 12px; color: #6b6a60; cursor: pointer;
+    border: 1px dashed var(--grey-200); border-radius: 12px; background: none;
+    font-size: 12px; color: var(--text-secondary); cursor: pointer;
   }}
-  #more-btn:hover {{ background: #f0efe8; border-style: solid; }}
+  #more-btn:hover {{ background: var(--grey-100); border-style: solid; }}
 
   iframe {{ flex: 1; border: none; }}
 </style>
