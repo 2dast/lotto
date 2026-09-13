@@ -1,5 +1,5 @@
 """scripts/report_template.html을 바탕으로 data/draws.json 최신 분석 결과와
-predictions/의 최신 추천 번호를 채워 분석/lotto_report_<타임스탬프>.html로 저장한다.
+predictions/의 최신 추천 번호를 채워 reports/lotto_report_<타임스탬프>.html로 저장한다.
 매 실행마다 새 파일을 남겨 이력으로 쌓이며, 템플릿 자체는 건드리지 않는다.
 """
 import datetime as dt
@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_PATH = ROOT / "data" / "draws.json"
 TEMPLATE_PATH = ROOT / "scripts" / "report_template.html"
 PREDICTIONS_DIR = ROOT / "predictions"
-REPORT_DIR = ROOT / "분석"
+REPORT_DIR = ROOT / "reports"
 
 ZONES = [(1, 9), (10, 19), (20, 29), (30, 39), (40, 45)]
 ALL_NUMBERS = list(range(1, 46))

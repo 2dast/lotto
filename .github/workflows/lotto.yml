@@ -40,6 +40,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/draws.json predictions/ README.md 분석/
+          git add -f data/draws.json predictions/ README.md reports/
           git diff --cached --quiet || git commit -m "chore: update lotto data and predictions"
           git push
