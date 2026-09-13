@@ -1,7 +1,7 @@
 """reports/ 안의 lotto_report_<timestamp>.html 파일들을 스캔해서
 reports/index.html을 생성한다. 최신 리포트를 iframe으로 바로 보여주고,
-좌측 목록은 기준 회차별로 묶어서 보여주며, 항목마다 생성 일자/일시를 표시한다.
-같은 회차를 여러 번 생성해도(수동 재실행 등) 회차 그룹 안에 모이도록 한다.
+좌측 목록은 예측 대상 회차별 아코디언으로 묶고, 최근 10개 회차만 먼저 보여준 뒤
+"더보기"로 이전 회차를 펼친다.
 """
 import datetime as dt
 import itertools
@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 REPORT_DIR = ROOT / "reports"
 FILENAME_RE = re.compile(r"^lotto_report_(\d{8})_(\d{6})\.html$")
 BASEDON_RE = re.compile(r'id="f-basedon">(\d+)<')
+VISIBLE_GROUPS = 10
 
 
 def list_reports():
@@ -32,54 +33,121 @@ def list_reports():
 def render_index(reports):
     latest_name = reports[0][2]
 
-    sections = []
+    groups = []
     for next_draw, group in itertools.groupby(reports, key=lambda r: r[0]):
-        group = list(group)
+        groups.append((next_draw, list(group)))
+
+    sections = []
+    for gi, (next_draw, group) in enumerate(groups):
+        is_first = gi == 0
+        hidden_group = gi >= VISIBLE_GROUPS
         items = "\n".join(
-            f'        <li><a href="#" data-src="{name}" class="{"active" if name == latest_name else ""}">'
+            f'          <li><a href="#" data-src="{name}" class="{"active" if name == latest_name else ""}">'
             f'{ts.strftime("%Y-%m-%d %H:%M")}</a></li>'
             for _, ts, name in group
         )
-        sections.append(f"""      <li class="draw-group">
-        <div class="draw-label">{next_draw}회차 예측 ({len(group)}건)</div>
-        <ul>
+        sections.append(f"""      <li class="draw-group{' is-hidden' if hidden_group else ''}" data-group-index="{gi}">
+        <button class="draw-header" type="button" aria-expanded="{'true' if is_first else 'false'}">
+          <span class="chevron">&#9656;</span>
+          <span class="draw-label">{next_draw}회차 예측</span>
+          <span class="draw-count">{len(group)}</span>
+        </button>
+        <ul class="draw-body"{' data-open="true"' if is_first else ''}>
 {items}
         </ul>
       </li>""")
     items = "\n".join(sections)
 
+    remaining = max(len(groups) - VISIBLE_GROUPS, 0)
+    more_button = (
+        f'    <button id="more-btn" type="button" data-remaining="{remaining}">'
+        f'더보기 ({remaining}개 회차)</button>\n' if remaining > 0 else ""
+    )
+
     return f"""<title>로또 분석 리포트</title>
 <style>
-  body {{ margin: 0; font-family: system-ui, sans-serif; }}
+  * {{ box-sizing: border-box; }}
+  body {{ margin: 0; font-family: "Pretendard", "Noto Sans KR", system-ui, sans-serif; }}
   .layout {{ display: flex; height: 100vh; }}
-  .sidebar {{ width: 240px; flex: none; overflow-y: auto; border-right: 1px solid #ddd; padding: 12px 0; }}
-  .sidebar h1 {{ font-size: 14px; padding: 0 16px; margin: 0 0 8px; }}
-  .sidebar > ul {{ list-style: none; margin: 0; padding: 0; }}
-  .draw-label {{ padding: 8px 16px 4px; font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.02em; }}
-  .draw-group ul {{ list-style: none; margin: 0; padding: 0; }}
-  .sidebar li a {{ display: block; padding: 6px 16px 6px 24px; font-size: 13px; text-decoration: none; color: #333; font-variant-numeric: tabular-nums; }}
-  .sidebar li a:hover {{ background: #f0f0f0; }}
-  .sidebar li a.active {{ background: #e4e9ef; font-weight: 700; color: #1f3a5f; }}
+  .sidebar {{ width: 260px; flex: none; overflow-y: auto; border-right: 1px solid #e4e2da; background: #fbfaf7; }}
+  .sidebar h1 {{ font-size: 13px; font-weight: 700; color: #1c1c1c; padding: 16px 16px 10px; margin: 0; letter-spacing: 0.01em; }}
+  .sidebar > ul {{ list-style: none; margin: 0; padding: 0 8px 12px; }}
+
+  .draw-group {{ margin-bottom: 2px; }}
+  .draw-group.is-hidden {{ display: none; }}
+
+  .draw-header {{
+    width: 100%; display: flex; align-items: center; gap: 8px;
+    background: none; border: none; cursor: pointer;
+    padding: 8px 8px; border-radius: 6px; font: inherit; text-align: left;
+  }}
+  .draw-header:hover {{ background: #f0efe8; }}
+  .draw-header .chevron {{
+    font-size: 10px; color: #9a9a90; transition: transform 0.15s ease; flex: none;
+  }}
+  .draw-header[aria-expanded="true"] .chevron {{ transform: rotate(90deg); }}
+  .draw-label {{ flex: 1; font-size: 12.5px; font-weight: 600; color: #2a2a26; }}
+  .draw-count {{
+    font-size: 10.5px; color: #8a8878; background: #ecebe3; border-radius: 10px;
+    padding: 1px 7px; font-variant-numeric: tabular-nums;
+  }}
+
+  .draw-body {{
+    list-style: none; margin: 0; padding: 0;
+    max-height: 0; overflow: hidden; transition: max-height 0.2s ease;
+  }}
+  .draw-body[data-open="true"] {{ max-height: 400px; }}
+  .draw-body li a {{
+    display: block; padding: 6px 10px 6px 30px; font-size: 12.5px;
+    text-decoration: none; color: #55534a; border-radius: 6px; margin: 1px 4px;
+    font-variant-numeric: tabular-nums;
+  }}
+  .draw-body li a:hover {{ background: #f0efe8; }}
+  .draw-body li a.active {{ background: #1f3a5f; color: #fff; font-weight: 600; }}
+
+  #more-btn {{
+    width: calc(100% - 8px); margin: 8px 4px 0; padding: 9px;
+    border: 1px dashed #d8d6c8; border-radius: 6px; background: none;
+    font-size: 12px; color: #6b6a60; cursor: pointer;
+  }}
+  #more-btn:hover {{ background: #f0efe8; border-style: solid; }}
+
   iframe {{ flex: 1; border: none; }}
 </style>
 <div class="layout">
   <nav class="sidebar">
-    <h1>과거 리포트</h1>
-    <ul>
+    <h1>리포트</h1>
+    <ul id="group-list">
 {items}
     </ul>
-  </nav>
+{more_button}  </nav>
   <iframe id="viewer" src="{latest_name}"></iframe>
 </div>
 <script>
-document.querySelectorAll('.sidebar a').forEach(a => {{
+document.querySelectorAll('.draw-header').forEach(btn => {{
+  btn.addEventListener('click', () => {{
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    btn.nextElementSibling.setAttribute('data-open', open ? 'false' : 'true');
+  }});
+}});
+
+document.querySelectorAll('.draw-body a').forEach(a => {{
   a.addEventListener('click', (e) => {{
     e.preventDefault();
     document.getElementById('viewer').src = a.dataset.src;
-    document.querySelectorAll('.sidebar a').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.draw-body a').forEach(el => el.classList.remove('active'));
     a.classList.add('active');
   }});
 }});
+
+const moreBtn = document.getElementById('more-btn');
+if (moreBtn) {{
+  moreBtn.addEventListener('click', () => {{
+    document.querySelectorAll('.draw-group.is-hidden').forEach(el => el.classList.remove('is-hidden'));
+    moreBtn.remove();
+  }});
+}}
 </script>
 """
 
