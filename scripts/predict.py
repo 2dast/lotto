@@ -31,8 +31,8 @@ def _parse_rule_lines(lines: list[str]) -> dict:
     }
 
     for raw_line in lines:
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
+        line = raw_line.split("#", 1)[0].strip()  # 줄 끝 한글 설명(#...)은 무시
+        if not line:
             continue
         tokens = line.split()
         keyword = tokens[0]
