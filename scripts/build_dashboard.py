@@ -417,6 +417,7 @@ def main() -> None:
   #dashboard-view {{
     max-width: 1440px; margin: 0 auto; padding: 20px; box-sizing: border-box;
     display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px;
+    align-items: start;
   }}
   #dashboard-view[hidden] {{ display: none; }}
   .dash-footer {{ grid-column: 1 / -1; display: flex; gap: 16px; flex-wrap: wrap; }}
