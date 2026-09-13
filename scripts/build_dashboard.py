@@ -174,7 +174,7 @@ def render_summary(
         const hits = computeHits(entry.predictions, actualNumbers);
         const best = Math.max(...hits);
         const badges = hits.map(h => `<span class="accuracy-badge${{h === 0 ? ' dim' : ''}}">${{h}}개</span>`).join(' ');
-        predSummary.innerHTML = `${{entry.next_draw}}회차 결과 대비 5세트 적중 ${{badges}} (최고 ${{best}}개)`;
+        predSummary.innerHTML = `적중 ${{badges}} · 최고 ${{best}}개`;
         const hitSet = new Set(actualNumbers);
         predList.innerHTML = entry.predictions.map((combo, i) => `
           <li class="pred-row">
