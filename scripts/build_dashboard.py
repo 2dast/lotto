@@ -471,14 +471,14 @@ def main() -> None:
   .set-nums {{ line-height: 1; }}
   .set-nums .number-ball {{ width: 28px; height: 28px; font-size: 13px; margin-right: 4px; }}
 
-  .recent-list {{ list-style: none; margin: 0; padding: 0; }}
-  .recent-row {{ display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); flex-wrap: wrap; }}
+  .recent-list {{ list-style: none; margin: 0; padding: 0; overflow-x: auto; }}
+  .recent-row {{ display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); flex-wrap: nowrap; white-space: nowrap; }}
   .recent-row:last-child {{ border-bottom: none; }}
-  .recent-no {{ font-size: 13px; font-weight: 700; width: 44px; flex: none; }}
-  .recent-date {{ font-size: 12px; color: var(--text-tertiary); width: 84px; flex: none; }}
-  .recent-balls {{ line-height: 1; }}
+  .recent-no {{ font-size: 13px; font-weight: 700; width: 40px; flex: none; }}
+  .recent-date {{ font-size: 12px; color: var(--text-tertiary); width: 80px; flex: none; }}
+  .recent-balls {{ line-height: 1; flex: none; }}
   .recent-balls .number-ball {{ width: 26px; height: 26px; font-size: 12px; margin-right: 4px; }}
-  .recent-amount {{ font-size: 12.5px; font-weight: 600; color: var(--text-secondary); margin-left: auto; }}
+  .recent-amount {{ font-size: 12.5px; font-weight: 600; color: var(--text-secondary); margin-left: auto; flex: none; }}
 
   .accuracy-badge {{
     display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 10px;
