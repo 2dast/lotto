@@ -14,7 +14,6 @@ from build_index import list_reports
 ROOT = Path(__file__).resolve().parent.parent
 DATA_PATH = ROOT / "data" / "draws.json"
 PREDICTIONS_DIR = ROOT / "predictions"
-HISTORY_PATH = ROOT / "data" / "accuracy_history.json"
 OUTPUT_PATH = ROOT / "index.html"
 
 BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"]
@@ -51,30 +50,22 @@ def load_all_predictions() -> list[dict]:
     return entries
 
 
-def load_history() -> list[dict]:
-    if not HISTORY_PATH.exists():
-        return []
-    return json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
-
-
 def render_summary(
+    draws: list[dict],
     latest_draw: dict,
     pred_filename: str,
     pred_data: dict,
-    history: list[dict],
     all_predictions: list[dict],
 ) -> tuple[str, str]:
-    """대시보드 메인 화면(요약 + 예측 + 추세)의 HTML과 <script>를 반환한다."""
+    """대시보드 메인 화면(요약 + 예측 + 추세)의 HTML과 <script>를 반환한다.
+
+    적중 이력은 별도 파일에 미리 계산해두지 않고, 선택된 예측 파일과 실제 당첨번호를
+    그 자리에서 비교해 클라이언트에서 계산한다 — 같은 회차에 예측 파일이 여러 개
+    있어도(재실행 등) 고른 파일 기준으로 항상 정확한 적중 결과를 보여준다.
+    """
     based_on = pred_data["based_on_drwNo"]
     next_draw = based_on + 1
     latest_balls = " ".join(number_ball(n) for n in latest_draw["numbers"])
-
-    pred_rows = "\n".join(
-        f'          <li class="pred-row">'
-        f'<span class="set-idx">{i + 1}</span>'
-        f'<span class="set-nums">{" ".join(number_ball(n) for n in combo)}</span></li>'
-        for i, combo in enumerate(pred_data["predictions"])
-    )
 
     rounds = sorted({e["next_draw"] for e in all_predictions}, reverse=True)
     round_options = "\n".join(
@@ -83,19 +74,21 @@ def render_summary(
     )
 
     predictions_json = json.dumps(all_predictions, ensure_ascii=False)
-    history_by_draw_json = json.dumps(
-        {e["drwNo"]: e for e in history}, ensure_ascii=False
-    )
+    draws_by_no_json = json.dumps({d["drwNo"]: d["numbers"] for d in draws}, ensure_ascii=False)
 
     pred_select_script = f"""
     const PREDICTIONS = {predictions_json};
-    const HISTORY_BY_DRAW = {history_by_draw_json};
+    const DRAWS_BY_NO = {draws_by_no_json};
     const LATEST_DRWNO = {latest_draw["drwNo"]};
     const BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"];
 
-    function ballHtml(n) {{
+    function ballHtml(n, hit) {{
       const zone = BALL_COLORS[Math.min(Math.floor((n - 1) / 10), 4)];
-      return `<span class="number-ball ${{zone}}">${{n}}</span>`;
+      return `<span class="number-ball ${{zone}}${{hit ? ' hit' : ''}}">${{n}}</span>`;
+    }}
+    function computeHits(predictions, actualNumbers) {{
+      const actual = new Set(actualNumbers);
+      return predictions.map(combo => combo.filter(n => actual.has(n)).length);
     }}
 
     const roundSelect = document.getElementById('round-select');
@@ -120,23 +113,29 @@ def render_summary(
       const entry = PREDICTIONS.find(p => p.next_draw === Number(round) && p.file === filename);
       if (!entry) return;
       predTitle.textContent = `${{entry.next_draw}}회차 예측`;
-      predList.innerHTML = entry.predictions.map((combo, i) => `
-        <li class="pred-row">
-          <span class="set-idx">${{i + 1}}</span>
-          <span class="set-nums">${{combo.map(ballHtml).join(' ')}}</span>
-        </li>
-      `).join('');
       predFileCaption.textContent = `예측 파일: ${{entry.file}}`;
 
-      const histEntry = HISTORY_BY_DRAW[entry.next_draw];
-      if (histEntry && histEntry.predictions_file === entry.file) {{
-        const best = Math.max(...histEntry.hits);
-        const badges = histEntry.hits.map(h => `<span class="accuracy-badge${{h === 0 ? ' dim' : ''}}">${{h}}개</span>`).join(' ');
-        predSummary.innerHTML = `${{histEntry.drwNo}}회차 결과 대비 5세트 적중 ${{badges}} (최고 ${{best}}개)`;
-      }} else if (entry.next_draw <= LATEST_DRWNO) {{
-        predSummary.textContent = '이 예측 파일 기준 적중 이력이 없습니다 (다른 파일로 집계됨).';
+      const actualNumbers = DRAWS_BY_NO[entry.next_draw];
+      if (actualNumbers) {{
+        const hits = computeHits(entry.predictions, actualNumbers);
+        const best = Math.max(...hits);
+        const badges = hits.map(h => `<span class="accuracy-badge${{h === 0 ? ' dim' : ''}}">${{h}}개</span>`).join(' ');
+        predSummary.innerHTML = `${{entry.next_draw}}회차 결과 대비 5세트 적중 ${{badges}} (최고 ${{best}}개)`;
+        const hitSet = new Set(actualNumbers);
+        predList.innerHTML = entry.predictions.map((combo, i) => `
+          <li class="pred-row">
+            <span class="set-idx">${{i + 1}}</span>
+            <span class="set-nums">${{combo.map(n => ballHtml(n, hitSet.has(n))).join(' ')}}</span>
+          </li>
+        `).join('');
       }} else {{
         predSummary.textContent = '아직 추첨 전입니다 — 결과 발표 후 적중 이력이 집계됩니다.';
+        predList.innerHTML = entry.predictions.map((combo, i) => `
+          <li class="pred-row">
+            <span class="set-idx">${{i + 1}}</span>
+            <span class="set-nums">${{combo.map(n => ballHtml(n, false)).join(' ')}}</span>
+          </li>
+        `).join('');
       }}
     }}
 
@@ -153,29 +152,32 @@ def render_summary(
     renderPrediction(roundSelect.value, fileSelect.value);
 """
 
-    if history:
-        last = history[-1]
-        best_hit = max(last["hits"])
-        hit_badges = " ".join(
-            f'<span class="accuracy-badge{" dim" if h == 0 else ""}">{h}개</span>' for h in last["hits"]
-        )
-        last_hits_summary = f'{last["drwNo"]}회차 결과 대비 5세트 적중 {hit_badges} (최고 {best_hit}개)'
-        history_json = json.dumps(
-            [{"drwNo": e["drwNo"], "best": max(e["hits"]), "avg": round(sum(e["hits"]) / len(e["hits"]), 2)}
-             for e in history],
-            ensure_ascii=False,
-        )
-        trend_section = """
-      <section class="card">
-        <h2 class="h3">적중 이력 추세</h2>
-        <svg id="chart-trend" viewBox="0 0 600 200" width="100%"></svg>
-        <p class="caption">회차별 5세트 중 최고 적중개수(막대) — 무작위 기대값 0.8개와 비교, 최고 기록만 강조.</p>
-      </section>"""
-        trend_script = f"""
-    const HISTORY = {history_json};
+    trend_script = f"""
     (function(){{
       const svg = document.getElementById("chart-trend");
+      const caption = document.getElementById("trend-caption");
       if (!svg) return;
+
+      // 회차별로 실제 결과가 이미 나온 예측만, 같은 회차에 여러 파일이 있으면
+      // 가장 나중에 생성된 파일을 그 회차의 대표 기록으로 삼는다.
+      const byRound = {{}};
+      PREDICTIONS.forEach(p => {{
+        if (!DRAWS_BY_NO[p.next_draw]) return;
+        const cur = byRound[p.next_draw];
+        if (!cur || p.generated_at > cur.generated_at) byRound[p.next_draw] = p;
+      }});
+      const HISTORY = Object.values(byRound).map(p => {{
+        const hits = computeHits(p.predictions, DRAWS_BY_NO[p.next_draw]);
+        return {{drwNo: p.next_draw, best: Math.max(...hits), avg: hits.reduce((a, b) => a + b, 0) / hits.length}};
+      }}).sort((a, b) => a.drwNo - b.drwNo);
+
+      if (HISTORY.length === 0) {{
+        svg.hidden = true;
+        caption.textContent = "아직 적중 이력 없음 — 다음 회차 추첨 이후부터 집계가 시작됩니다.";
+        return;
+      }}
+      caption.textContent = "회차별 5세트 중 최고 적중개수(막대) — 무작위 기대값 0.8개와 비교, 최고 기록만 강조.";
+
       const styles = getComputedStyle(document.documentElement);
       const brand = styles.getPropertyValue("--blue-500").trim();
       const grey = styles.getPropertyValue("--grey-200").trim();
@@ -204,14 +206,13 @@ def render_summary(
         svg.appendChild(lbl);
       }});
     }})();"""
-    else:
-        last_hits_summary = "아직 적중 이력 없음 — 다음 회차부터 집계 시작"
-        trend_section = """
+
+    trend_section = """
       <section class="card">
         <h2 class="h3">적중 이력 추세</h2>
-        <p class="caption">아직 적중 이력 없음 — 다음 회차 추첨 이후부터 집계가 시작됩니다.</p>
+        <svg id="chart-trend" viewBox="0 0 600 200" width="100%"></svg>
+        <p class="caption" id="trend-caption"></p>
       </section>"""
-        trend_script = ""
 
     html = f"""
       <p class="body-1">최근 실제 당첨 · <span class="table-numeric">{latest_draw["drwNo"]}회차</span> ({latest_draw["date"]})</p>
@@ -227,15 +228,13 @@ def render_summary(
             <select id="file-select" aria-label="예측 파일 선택"></select>
           </div>
         </div>
-        <p class="body-1" id="pred-summary" style="margin:0 0 12px">{last_hits_summary}</p>
-        <ul class="pred-list" id="pred-list">
-{pred_rows}
-        </ul>
+        <p class="body-1" id="pred-summary" style="margin:0 0 12px"></p>
+        <ul class="pred-list" id="pred-list"></ul>
         <p class="caption" id="pred-file-caption">예측 파일: {pred_filename}</p>
       </section>
 {trend_section}
       <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>"""
-    return html, trend_script + pred_select_script
+    return html, pred_select_script + trend_script
 
 
 def render_sidebar(reports: list[tuple[int, object, str]]) -> str:
@@ -272,12 +271,11 @@ def main() -> None:
     draws = json.loads(DATA_PATH.read_text(encoding="utf-8"))
     latest_draw = draws[-1]
     pred_filename, pred_data = load_latest_predictions()
-    history = load_history()
     reports = list_reports()
     all_predictions = load_all_predictions()
 
     summary_html, trend_script = render_summary(
-        latest_draw, pred_filename, pred_data, history, all_predictions
+        draws, latest_draw, pred_filename, pred_data, all_predictions
     )
     sidebar_html = render_sidebar(reports)
     next_draw_label = f'{pred_data["based_on_drwNo"] + 1}회차 예측 기준'

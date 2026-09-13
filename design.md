@@ -302,7 +302,7 @@ product-facing 색은 시맨틱 alias(`{colors.fill-brand}`, `{colors.text-prima
 
 ### track-row
 
-`scripts/track_accuracy.py` 결과를 한 줄로 보여주는 표 행 — 회차/예측 세트/적중 개수/생성 시각 4열, 1px `{colors.border-secondary}` 헤어라인으로 행 구분. 수치 열은 tabular-nums, 우측 정렬.
+적중 이력을 한 줄로 보여주는 표 행 — 회차/예측 세트/적중 개수/생성 시각 4열, 1px `{colors.border-secondary}` 헤어라인으로 행 구분. 수치 열은 tabular-nums, 우측 정렬. (적중 개수는 별도 파일에 미리 계산해두지 않고, 선택된 예측 파일과 실제 당첨번호를 클라이언트에서 그 자리에서 비교해 계산한다.)
 
 ### trend-chart
 
