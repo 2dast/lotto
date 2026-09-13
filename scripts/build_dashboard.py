@@ -1,5 +1,5 @@
-"""저장소 루트에 index.html 대시보드를 생성한다. 메인 화면은 최신 실제 당첨번호,
-다음 회차 예측 5세트, 적중 이력 추세를 보여주고, 왼쪽 사이드바에서 회차별 리포트를
+"""저장소 루트에 index.html 대시보드를 생성한다. 메인 화면은 최신 실제 당첨번호와
+다음 회차 예측 5세트를 보여주고, 왼쪽 사이드바에서 회차별 리포트를
 선택하면 같은 화면 안에서 그 리포트(reports/lotto_report_<ts>.html)를 바로 보여준다.
 (reports/ 안의 회차 그룹핑은 build_index.list_reports를 그대로 재사용한다.)
 
@@ -56,14 +56,6 @@ def load_all_predictions() -> list[dict]:
     return entries
 
 
-def compute_all_freq(draws: list[dict]) -> list[int]:
-    freq = [0] * 45
-    for d in draws:
-        for n in d["numbers"]:
-            freq[n - 1] += 1
-    return freq
-
-
 def next_draw_date_label(latest_draw: dict) -> str:
     """로또는 매주 토요일 추첨이므로 마지막 실제 회차 날짜 + 7일 = 다음 추첨일."""
     last_date = dt.datetime.strptime(latest_draw["date"], "%Y-%m-%d").date()
@@ -94,12 +86,11 @@ def render_summary(
     pred_filename: str,
     pred_data: dict,
     all_predictions: list[dict],
-    all_freq: list[int],
     rules_line: str,
     dday_label: str,
     generated_at_label: str,
 ) -> tuple[str, str]:
-    """대시보드 메인 화면(요약 + 예측 + 추세)의 HTML과 <script>를 반환한다.
+    """대시보드 메인 화면(최신 당첨 + 예측)의 HTML과 <script>를 반환한다.
 
     적중 이력은 별도 파일에 미리 계산해두지 않고, 선택된 예측 파일과 실제 당첨번호를
     그 자리에서 비교해 클라이언트에서 계산한다 — 같은 회차에 예측 파일이 여러 개
@@ -117,13 +108,10 @@ def render_summary(
 
     predictions_json = json.dumps(all_predictions, ensure_ascii=False)
     draws_by_no_json = json.dumps({d["drwNo"]: d["numbers"] for d in draws}, ensure_ascii=False)
-    all_freq_json = json.dumps(all_freq, ensure_ascii=False)
 
     shared_script = f"""
     const PREDICTIONS = {predictions_json};
     const DRAWS_BY_NO = {draws_by_no_json};
-    const ALL_FREQ = {all_freq_json};
-    const LATEST_DRWNO = {latest_draw["drwNo"]};
     const BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"];
 
     function ballHtml(n, hit) {{
@@ -134,34 +122,6 @@ def render_summary(
       const actual = new Set(actualNumbers);
       return predictions.map(combo => combo.filter(n => actual.has(n)).length);
     }}
-    // 회차별로 실제 결과가 이미 나온 예측만, 같은 회차에 여러 파일이 있으면
-    // 가장 나중에 생성된 파일을 그 회차의 대표 기록으로 삼는다.
-    function computeHistory() {{
-      const byRound = {{}};
-      PREDICTIONS.forEach(p => {{
-        if (!DRAWS_BY_NO[p.next_draw]) return;
-        const cur = byRound[p.next_draw];
-        if (!cur || p.generated_at > cur.generated_at) byRound[p.next_draw] = p;
-      }});
-      return Object.values(byRound).map(p => {{
-        const hits = computeHits(p.predictions, DRAWS_BY_NO[p.next_draw]);
-        return {{drwNo: p.next_draw, best: Math.max(...hits), avg: hits.reduce((a, b) => a + b, 0) / hits.length}};
-      }}).sort((a, b) => a.drwNo - b.drwNo);
-    }}
-
-    const freqGrid = document.getElementById('freq-grid');
-    const freqMin = Math.min(...ALL_FREQ), freqMax = Math.max(...ALL_FREQ);
-    function updateHeatmap(highlightNumbers) {{
-      const highlight = highlightNumbers || new Set();
-      freqGrid.innerHTML = ALL_FREQ.map((f, i) => {{
-        const n = i + 1;
-        const t = (f - freqMin) / (freqMax - freqMin || 1);
-        const bg = `color-mix(in oklch, var(--blue-500) ${{Math.round((0.12 + t * 0.55) * 100)}}%, var(--grey-50))`;
-        const cls = highlight.has(n) ? 'freq-cell predicted' : 'freq-cell';
-        return `<div class="${{cls}}" style="background:${{bg}}" title="${{n}}번: ${{f}}회">${{n}}</div>`;
-      }}).join('');
-    }}
-    updateHeatmap();
 
     const roundSelect = document.getElementById('round-select');
     const fileSelect = document.getElementById('file-select');
@@ -209,7 +169,6 @@ def render_summary(
           </li>
         `).join('');
       }}
-      updateHeatmap(new Set(entry.predictions.flat()));
     }}
 
     roundSelect.addEventListener('change', () => {{
@@ -225,91 +184,12 @@ def render_summary(
     renderPrediction(roundSelect.value, fileSelect.value);
 """
 
-    trend_script = f"""
-    (function(){{
-      const svg = document.getElementById("chart-trend");
-      const caption = document.getElementById("trend-caption");
-      if (!svg) return;
-      const HISTORY = computeHistory();
-
-      if (HISTORY.length === 0) {{
-        svg.hidden = true;
-        caption.textContent = "아직 적중 이력 없음 — 다음 회차 추첨 이후부터 집계가 시작됩니다.";
-        return;
-      }}
-      caption.textContent = "회차별 5세트 중 최고 적중개수(막대) — 무작위 기대값 0.8개와 비교, 최고 기록만 강조.";
-
-      const styles = getComputedStyle(document.documentElement);
-      const brand = styles.getPropertyValue("--blue-500").trim();
-      const grey = styles.getPropertyValue("--grey-200").trim();
-      const danger = styles.getPropertyValue("--red-500").trim();
-      const W = 600, H = 200, padL = 30, padR = 10, padT = 10, padB = 24;
-      const plotW = W - padL - padR, plotH = H - padT - padB;
-      const n = HISTORY.length;
-      const gap = 6;
-      const barW = (plotW - gap * (n - 1)) / n;
-      const maxV = Math.max(...HISTORY.map(h => h.best), 1);
-      const peakBest = Math.max(...HISTORY.map(h => h.best));
-      function el(tag, attrs) {{
-        const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
-        for (const k in attrs) e.setAttribute(k, attrs[k]);
-        return e;
-      }}
-      const baselineY = H - padB - (0.8 / maxV) * plotH;
-      svg.appendChild(el("line", {{x1: padL, y1: baselineY, x2: W - padR, y2: baselineY, stroke: danger, "stroke-dasharray": "4 3"}}));
-      HISTORY.forEach((h, i) => {{
-        const x = padL + i * (barW + gap);
-        const barH = (h.best / maxV) * plotH;
-        const y = H - padB - barH;
-        svg.appendChild(el("rect", {{x, y, width: barW, height: Math.max(barH, 1), rx: 2, fill: h.best === peakBest ? brand : grey}}));
-        const lbl = el("text", {{x: x + barW / 2, y: H - padB + 14, "text-anchor": "middle", "font-size": "9", fill: styles.getPropertyValue("--text-tertiary").trim()}});
-        lbl.textContent = h.drwNo;
-        svg.appendChild(lbl);
-      }});
-    }})();"""
-
-    kpi_script = """
-    (function(){
-      const box = document.getElementById('kpi-row');
-      if (!box) return;
-      const HISTORY = computeHistory();
-      if (HISTORY.length === 0) {
-        box.hidden = true;
-        return;
-      }
-      const tracked = HISTORY.length;
-      const avgBest = HISTORY.reduce((a, h) => a + h.best, 0) / tracked;
-      const beatRandom = HISTORY.filter(h => h.best > 0.8).length;
-      box.innerHTML = `
-        <div class="kpi"><div class="kpi-value">${tracked}</div><div class="kpi-label">추적 회차</div></div>
-        <div class="kpi"><div class="kpi-value">${avgBest.toFixed(2)}</div><div class="kpi-label">평균 최고적중</div></div>
-        <div class="kpi"><div class="kpi-value">${beatRandom}/${tracked}</div><div class="kpi-label">무작위(0.8) 초과</div></div>
-      `;
-    })();"""
-
-    trend_section = """
-      <section class="card">
-        <h2 class="h3">적중 이력 추세</h2>
-        <div class="kpi-row" id="kpi-row"></div>
-        <svg id="chart-trend" viewBox="0 0 600 200" width="100%"></svg>
-        <p class="caption" id="trend-caption"></p>
-      </section>"""
-
-    freq_section = """
-      <section class="card">
-        <h2 class="h3">번호별 출현빈도 (1~45)</h2>
-        <div class="freq-grid" id="freq-grid"></div>
-        <p class="caption">전체 회차 누적 출현 횟수 — 진할수록 많이 나온 번호, 파란 테두리는 현재 선택된 예측에 포함된 번호.</p>
-      </section>"""
-
     html = f"""
-      <div class="dash-top">
-        <p class="body-1">최근 실제 당첨 · <span class="table-numeric">{latest_draw["drwNo"]}회차</span> ({latest_draw["date"]})</p>
-        <p class="ball-row">{latest_balls}</p>
-        <p class="caption">{dday_label}</p>
-      </div>
+      <p class="body-1">최근 실제 당첨 · <span class="table-numeric">{latest_draw["drwNo"]}회차</span> ({latest_draw["date"]})</p>
+      <p class="ball-row">{latest_balls}</p>
+      <p class="caption">{dday_label}</p>
 
-      <section class="card dash-left">
+      <section class="card">
         <div class="pred-header">
           <h2 class="h3" id="pred-title">{next_draw}회차 예측</h2>
           <div class="select-row">
@@ -325,16 +205,9 @@ def render_summary(
         <p class="caption" id="pred-file-caption">예측 파일: {pred_filename}</p>
       </section>
 
-      <div class="dash-right">
-{trend_section}
-{freq_section}
-      </div>
-
-      <div class="dash-footer">
-        <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>
-        <p class="footnote">마지막 갱신: {generated_at_label} (KST, GitHub Actions 자동 실행)</p>
-      </div>"""
-    return html, shared_script + kpi_script + trend_script
+      <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>
+      <p class="footnote">마지막 갱신: {generated_at_label} (KST, GitHub Actions 자동 실행)</p>"""
+    return html, shared_script
 
 
 def render_sidebar(reports: list[tuple[int, object, str]]) -> str:
@@ -373,14 +246,13 @@ def main() -> None:
     pred_filename, pred_data = load_latest_predictions()
     reports = list_reports()
     all_predictions = load_all_predictions()
-    all_freq = compute_all_freq(draws)
     rules_line = rules_summary_line(load_rules())
     dday_label = next_draw_date_label(latest_draw)
     generated_at_label = dt.datetime.now(KST).strftime("%Y-%m-%d %H:%M")
 
-    summary_html, trend_script = render_summary(
+    summary_html, shared_script = render_summary(
         draws, latest_draw, pred_filename, pred_data, all_predictions,
-        all_freq, rules_line, dday_label, generated_at_label,
+        rules_line, dday_label, generated_at_label,
     )
     sidebar_html = render_sidebar(reports)
     next_draw_label = f'{pred_data["based_on_drwNo"] + 1}회차 예측 기준'
@@ -509,12 +381,6 @@ def main() -> None:
       z-index: 15; opacity: 0; pointer-events: none; transition: opacity 200ms ease;
     }}
     .sidebar-backdrop.is-open {{ opacity: 1; pointer-events: auto; }}
-    .main {{ overflow-y: auto; }}
-    #dashboard-view {{
-      height: auto; grid-template-columns: 1fr; grid-template-rows: auto auto auto auto;
-    }}
-    .dash-left {{ grid-column: 1; overflow-y: visible; }}
-    .dash-right {{ grid-column: 1; overflow-y: visible; }}
   }}
   .sidebar-title {{ font-size: 12px; font-weight: 700; color: var(--text-tertiary); letter-spacing: 0.02em; padding: 16px 16px 8px; margin: 0; }}
   .sidebar > ul {{ list-style: none; margin: 0; padding: 8px 8px 12px; }}
@@ -540,19 +406,11 @@ def main() -> None:
   .draw-body li a:hover {{ background: var(--grey-100); }}
   .draw-body li a.active {{ background: var(--blue-50); color: var(--blue-500); font-weight: 600; border-left-color: var(--blue-500); }}
 
-  .main {{ flex: 1; overflow: hidden; }}
-  #dashboard-view {{
-    height: 100%; max-width: 1120px; margin: 0 auto; padding: 20px; box-sizing: border-box;
-    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px;
-  }}
-  .dash-top {{ grid-column: 1 / -1; }}
-  .dash-left {{ grid-column: 1; min-height: 0; overflow-y: auto; }}
-  .dash-right {{ grid-column: 2; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }}
-  .dash-footer {{ grid-column: 1 / -1; display: flex; gap: 16px; flex-wrap: wrap; }}
-  .dash-footer .footnote {{ margin: 0; }}
+  .main {{ flex: 1; overflow-y: auto; }}
+  #dashboard-view {{ max-width: 640px; margin: 0 auto; padding: 24px 20px 64px; }}
   .card {{
     border: 1px solid var(--border-secondary); border-radius: 16px; box-shadow: var(--shadow-1);
-    padding: 20px; margin-bottom: 0;
+    padding: 20px; margin-bottom: 16px;
   }}
   .pred-header {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }}
   .pred-header .h3 {{ margin: 0; }}
@@ -588,22 +446,6 @@ def main() -> None:
   }}
   .accuracy-badge.dim {{ background: var(--grey-100); color: var(--text-secondary); }}
 
-  .kpi-row {{ display: flex; gap: 8px; margin-bottom: 16px; }}
-  .kpi {{
-    flex: 1; text-align: center; padding: 12px 8px; border-radius: 12px; background: var(--grey-50);
-    border: 1px solid var(--border-secondary);
-  }}
-  .kpi-value {{ font-size: 20px; font-weight: 700; letter-spacing: -0.015em; color: var(--text-primary); font-variant-numeric: tabular-nums; }}
-  .kpi-label {{ font-size: 12px; font-weight: 500; color: var(--text-tertiary); margin-top: 4px; }}
-
-  .freq-grid {{ display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; margin-bottom: 8px; }}
-  .freq-cell {{
-    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 500; color: var(--text-primary); border-radius: 8px;
-    font-variant-numeric: tabular-nums;
-  }}
-  .freq-cell.predicted {{ outline: 2px solid var(--blue-500); outline-offset: -2px; font-weight: 700; }}
-
   iframe {{ display: block; width: 100%; height: 100%; border: none; }}
   iframe[hidden] {{ display: none; }}
 </style>
@@ -634,7 +476,7 @@ def main() -> None:
   </main>
 </div>
 <script>
-{trend_script}
+{shared_script}
 
 const dashboardView = document.getElementById('dashboard-view');
 const viewer = document.getElementById('viewer');
