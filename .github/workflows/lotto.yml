@@ -36,6 +36,9 @@ jobs:
       - name: Generate analysis report
         run: python scripts/generate_report.py
 
+      - name: Build report index
+        run: python scripts/build_index.py
+
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
