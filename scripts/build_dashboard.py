@@ -124,9 +124,12 @@ def render_summary(
     predictions_json = json.dumps(all_predictions, ensure_ascii=False)
     draws_by_no_json = json.dumps({d["drwNo"]: d["numbers"] for d in draws}, ensure_ascii=False)
 
+    rules_line_json = json.dumps(rules_line, ensure_ascii=False)
+
     shared_script = f"""
     const PREDICTIONS = {predictions_json};
     const DRAWS_BY_NO = {draws_by_no_json};
+    const RULES_LINE = {rules_line_json};
     const BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"];
 
     function ballHtml(n, hit) {{
@@ -160,7 +163,7 @@ def render_summary(
       const entry = PREDICTIONS.find(p => p.next_draw === Number(round) && p.file === filename);
       if (!entry) return;
       predTitle.textContent = `${{entry.next_draw}}회차 예측`;
-      predFileCaption.textContent = `예측 파일: ${{entry.file}}`;
+      predFileCaption.textContent = `예측 파일: ${{entry.file}} · 스크리닝 조건: ${{RULES_LINE}}`;
 
       const actualNumbers = DRAWS_BY_NO[entry.next_draw];
       if (actualNumbers) {{
@@ -210,10 +213,9 @@ def render_summary(
             <select id="file-select" aria-label="예측 파일 선택"></select>
           </div>
         </div>
-        <p class="body-1" id="pred-summary" style="margin:0 0 12px"></p>
+        <p class="body-1" id="pred-summary" style="margin:0 0 10px"></p>
         <ul class="pred-list" id="pred-list"></ul>
-        <p class="caption" id="pred-file-caption">예측 파일: {pred_filename}</p>
-        <p class="caption">스크리닝 조건: {rules_line}</p>
+        <p class="caption" id="pred-file-caption">예측 파일: {pred_filename} · 스크리닝 조건: {rules_line}</p>
       </section>
 
       <section class="card dash-right">
@@ -432,8 +434,8 @@ def main() -> None:
 
   .main {{ flex: 1; overflow: hidden; }}
   #dashboard-view {{
-    height: 100%; max-width: 1120px; margin: 0 auto; padding: 20px; box-sizing: border-box;
-    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 12px;
+    height: 100%; max-width: 1120px; margin: 0 auto; padding: 16px; box-sizing: border-box;
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 10px;
   }}
   #dashboard-view[hidden] {{ display: none; }}
   .dash-left {{ grid-column: 1; min-height: 0; overflow-y: auto; }}
@@ -442,9 +444,10 @@ def main() -> None:
   .dash-footer .footnote {{ margin: 0; }}
   .card {{
     border: 1px solid var(--border-secondary); border-radius: 16px; box-shadow: var(--shadow-1);
-    padding: 20px; margin-bottom: 0;
+    padding: 16px; margin-bottom: 0;
   }}
-  .pred-header {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }}
+  .card .h3 {{ margin-bottom: 8px; }}
+  .pred-header {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }}
   .pred-header .h3 {{ margin: 0; }}
   .select-row {{ display: flex; gap: 8px; }}
   .select-row select {{
@@ -465,14 +468,14 @@ def main() -> None:
   .number-ball.hit {{ outline: 2px solid var(--green-500); outline-offset: 1px; }}
 
   ul.pred-list {{ list-style: none; margin: 0; padding: 0; }}
-  .pred-row {{ display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); }}
+  .pred-row {{ display: flex; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border-secondary); }}
   .pred-row:last-child {{ border-bottom: none; }}
   .set-idx {{ color: var(--text-tertiary); width: 16px; font-size: 12px; font-weight: 500; flex: none; }}
   .set-nums {{ line-height: 1; }}
   .set-nums .number-ball {{ width: 28px; height: 28px; font-size: 13px; margin-right: 4px; }}
 
   .recent-list {{ list-style: none; margin: 0; padding: 0; overflow-x: auto; }}
-  .recent-row {{ display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); flex-wrap: nowrap; white-space: nowrap; }}
+  .recent-row {{ display: flex; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border-secondary); flex-wrap: nowrap; white-space: nowrap; }}
   .recent-row:last-child {{ border-bottom: none; }}
   .recent-no {{ font-size: 13px; font-weight: 700; width: 40px; flex: none; }}
   .recent-date {{ font-size: 12px; color: var(--text-tertiary); width: 80px; flex: none; }}
