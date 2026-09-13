@@ -1,6 +1,7 @@
 """reports/ 안의 lotto_report_<timestamp>.html 파일들을 스캔해서
 reports/index.html을 생성한다. 최신 리포트를 iframe으로 바로 보여주고,
-좌측 목록에서 과거 리포트를 선택하면 iframe이 해당 리포트로 바뀐다.
+좌측 목록은 기준 회차별로 묶어서 보여주며, 항목마다 생성 일자/일시를 표시한다.
+같은 회차를 여러 번 생성해도(수동 재실행 등) 회차 그룹 안에 모이도록 한다.
 """
 import datetime as dt
 import itertools
@@ -10,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 REPORT_DIR = ROOT / "reports"
 FILENAME_RE = re.compile(r"^lotto_report_(\d{8})_(\d{6})\.html$")
+BASEDON_RE = re.compile(r'id="f-basedon">(\d+)<')
 
 
 def list_reports():
@@ -19,27 +21,27 @@ def list_reports():
         if not m:
             continue
         timestamp = dt.datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S")
-        reports.append((timestamp, path.name))
-    reports.sort(key=lambda r: r[0], reverse=True)
+        basedon_m = BASEDON_RE.search(path.read_text(encoding="utf-8"))
+        based_on = int(basedon_m.group(1)) if basedon_m else 0
+        next_draw = based_on + 1  # 예측 대상은 마지막 발표 회차의 "다음" 회차
+        reports.append((next_draw, timestamp, path.name))
+    reports.sort(key=lambda r: (r[0], r[1]), reverse=True)
     return reports
 
 
 def render_index(reports):
-    latest_name = reports[0][1]
-
-    groups = []
-    for date, group in itertools.groupby(reports, key=lambda r: r[0].date()):
-        groups.append((date, list(group)))
+    latest_name = reports[0][2]
 
     sections = []
-    for date, group in groups:
+    for next_draw, group in itertools.groupby(reports, key=lambda r: r[0]):
+        group = list(group)
         items = "\n".join(
             f'        <li><a href="#" data-src="{name}" class="{"active" if name == latest_name else ""}">'
-            f'{ts.strftime("%H:%M")}</a></li>'
-            for ts, name in group
+            f'{ts.strftime("%Y-%m-%d %H:%M")}</a></li>'
+            for _, ts, name in group
         )
-        sections.append(f"""      <li class="date-group">
-        <div class="date-label">{date.strftime("%Y-%m-%d")} ({len(group)}건)</div>
+        sections.append(f"""      <li class="draw-group">
+        <div class="draw-label">{next_draw}회차 예측 ({len(group)}건)</div>
         <ul>
 {items}
         </ul>
@@ -50,12 +52,12 @@ def render_index(reports):
 <style>
   body {{ margin: 0; font-family: system-ui, sans-serif; }}
   .layout {{ display: flex; height: 100vh; }}
-  .sidebar {{ width: 220px; flex: none; overflow-y: auto; border-right: 1px solid #ddd; padding: 12px 0; }}
+  .sidebar {{ width: 240px; flex: none; overflow-y: auto; border-right: 1px solid #ddd; padding: 12px 0; }}
   .sidebar h1 {{ font-size: 14px; padding: 0 16px; margin: 0 0 8px; }}
   .sidebar > ul {{ list-style: none; margin: 0; padding: 0; }}
-  .date-label {{ padding: 8px 16px 4px; font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.02em; }}
-  .date-group ul {{ list-style: none; margin: 0; padding: 0; }}
-  .sidebar li a {{ display: block; padding: 6px 16px 6px 24px; font-size: 13px; text-decoration: none; color: #333; }}
+  .draw-label {{ padding: 8px 16px 4px; font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.02em; }}
+  .draw-group ul {{ list-style: none; margin: 0; padding: 0; }}
+  .sidebar li a {{ display: block; padding: 6px 16px 6px 24px; font-size: 13px; text-decoration: none; color: #333; font-variant-numeric: tabular-nums; }}
   .sidebar li a:hover {{ background: #f0f0f0; }}
   .sidebar li a.active {{ background: #e4e9ef; font-weight: 700; color: #1f3a5f; }}
   iframe {{ flex: 1; border: none; }}

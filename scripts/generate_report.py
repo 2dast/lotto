@@ -187,7 +187,7 @@ def main() -> None:
     html = set_span(html, "f-random", f"{backtest['random']:.4f}")
     html = set_span(html, "f-simrange", f"{total - WINDOW}회차({WINDOW + 1}~{total})")
     html = set_span(html, "f-basedon", str(based_on))
-    html = set_span(html, "f-basedon2", str(based_on))
+    html = set_span(html, "f-basedon2", str(based_on + 1))
     html = set_span(html, "f-predfile", pred_filename)
 
     # predictions_<ts>.json 의 타임스탬프를 그대로 리포트 파일명에 붙여 1:1로 이력 관리
