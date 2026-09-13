@@ -2,7 +2,10 @@
 다음 회차 예측 5세트, 적중 이력 추세를 보여주고, 왼쪽 사이드바에서 회차별 리포트를
 선택하면 같은 화면 안에서 그 리포트(reports/lotto_report_<ts>.html)를 바로 보여준다.
 (reports/ 안의 회차 그룹핑은 build_index.list_reports를 그대로 재사용한다.)
+
+화면 톤은 design.md(토스 디자인 시스템 토큰 기반)를 따른다.
 """
+import itertools
 import json
 from pathlib import Path
 
@@ -13,6 +16,17 @@ DATA_PATH = ROOT / "data" / "draws.json"
 PREDICTIONS_DIR = ROOT / "predictions"
 HISTORY_PATH = ROOT / "data" / "accuracy_history.json"
 OUTPUT_PATH = ROOT / "index.html"
+
+BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"]
+
+
+def ball_zone(n: int) -> str:
+    return BALL_COLORS[min((n - 1) // 10, 4)]
+
+
+def number_ball(n: int, hit: bool = False) -> str:
+    cls = f"number-ball {ball_zone(n)}" + (" hit" if hit else "")
+    return f'<span class="{cls}">{n}</span>'
 
 
 def load_latest_predictions() -> tuple[str, dict]:
@@ -31,54 +45,62 @@ def render_summary(latest_draw: dict, pred_filename: str, pred_data: dict, histo
     """대시보드 메인 화면(요약 + 예측 + 추세)의 HTML과 <script>를 반환한다."""
     based_on = pred_data["based_on_drwNo"]
     next_draw = based_on + 1
+    latest_balls = " ".join(number_ball(n) for n in latest_draw["numbers"])
+
     pred_rows = "\n".join(
-        f'          <li><span class="set-idx">{i + 1}</span>'
-        f'<span class="set-nums">{" · ".join(str(n) for n in combo)}</span></li>'
+        f'          <li class="pred-row">'
+        f'<span class="set-idx">{i + 1}</span>'
+        f'<span class="set-nums">{" ".join(number_ball(n) for n in combo)}</span></li>'
         for i, combo in enumerate(pred_data["predictions"])
     )
 
     if history:
         last = history[-1]
-        last_hits_summary = (
-            f'{last["drwNo"]}회차 실제 결과 대비 5세트 적중: '
-            f'{", ".join(str(h) for h in last["hits"])}개 (최고 {max(last["hits"])}개)'
+        best_hit = max(last["hits"])
+        hit_badges = " ".join(
+            f'<span class="accuracy-badge{" dim" if h == 0 else ""}">{h}개</span>' for h in last["hits"]
         )
+        last_hits_summary = f'{last["drwNo"]}회차 결과 대비 5세트 적중 {hit_badges} (최고 {best_hit}개)'
         history_json = json.dumps(
             [{"drwNo": e["drwNo"], "best": max(e["hits"]), "avg": round(sum(e["hits"]) / len(e["hits"]), 2)}
              for e in history],
             ensure_ascii=False,
         )
         trend_section = """
-      <section>
-        <h2>적중 이력 추세</h2>
+      <section class="card">
+        <h2 class="h3">적중 이력 추세</h2>
         <svg id="chart-trend" viewBox="0 0 600 200" width="100%"></svg>
-        <p class="note">회차별 5세트 중 최고 적중개수(막대) — 무작위 기대값 0.8개와 비교.</p>
+        <p class="caption">회차별 5세트 중 최고 적중개수(막대) — 무작위 기대값 0.8개와 비교, 최고 기록만 강조.</p>
       </section>"""
         trend_script = f"""
     const HISTORY = {history_json};
     (function(){{
       const svg = document.getElementById("chart-trend");
       if (!svg) return;
+      const styles = getComputedStyle(document.documentElement);
+      const brand = styles.getPropertyValue("--blue-500").trim();
+      const grey = styles.getPropertyValue("--grey-200").trim();
+      const danger = styles.getPropertyValue("--red-500").trim();
       const W = 600, H = 200, padL = 30, padR = 10, padT = 10, padB = 24;
       const plotW = W - padL - padR, plotH = H - padT - padB;
       const n = HISTORY.length;
       const gap = 6;
       const barW = (plotW - gap * (n - 1)) / n;
       const maxV = Math.max(...HISTORY.map(h => h.best), 1);
+      const peakBest = Math.max(...HISTORY.map(h => h.best));
       function el(tag, attrs) {{
         const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
         for (const k in attrs) e.setAttribute(k, attrs[k]);
         return e;
       }}
-      svg.appendChild(el("line", {{x1: padL, y1: H - padB, x2: W - padR, y2: H - padB, stroke: "#999"}}));
       const baselineY = H - padB - (0.8 / maxV) * plotH;
-      svg.appendChild(el("line", {{x1: padL, y1: baselineY, x2: W - padR, y2: baselineY, stroke: "#a5322b", "stroke-dasharray": "4 3"}}));
+      svg.appendChild(el("line", {{x1: padL, y1: baselineY, x2: W - padR, y2: baselineY, stroke: danger, "stroke-dasharray": "4 3"}}));
       HISTORY.forEach((h, i) => {{
         const x = padL + i * (barW + gap);
         const barH = (h.best / maxV) * plotH;
         const y = H - padB - barH;
-        svg.appendChild(el("rect", {{x, y, width: barW, height: Math.max(barH, 1), fill: "#1f3a5f"}}));
-        const lbl = el("text", {{x: x + barW / 2, y: H - padB + 14, "text-anchor": "middle", "font-size": "9"}});
+        svg.appendChild(el("rect", {{x, y, width: barW, height: Math.max(barH, 1), rx: 2, fill: h.best === peakBest ? brand : grey}}));
+        const lbl = el("text", {{x: x + barW / 2, y: H - padB + 14, "text-anchor": "middle", "font-size": "9", fill: styles.getPropertyValue("--text-tertiary").trim()}});
         lbl.textContent = h.drwNo;
         svg.appendChild(lbl);
       }});
@@ -86,32 +108,33 @@ def render_summary(latest_draw: dict, pred_filename: str, pred_data: dict, histo
     else:
         last_hits_summary = "아직 적중 이력 없음 — 다음 회차부터 집계 시작"
         trend_section = """
-      <section>
-        <h2>적중 이력 추세</h2>
-        <p class="note">아직 적중 이력 없음 — 다음 회차 추첨 이후부터 집계가 시작됩니다.</p>
+      <section class="card">
+        <h2 class="h3">적중 이력 추세</h2>
+        <p class="caption">아직 적중 이력 없음 — 다음 회차 추첨 이후부터 집계가 시작됩니다.</p>
       </section>"""
         trend_script = ""
 
     html = f"""
-      <p class="note">최근 실제 당첨: {latest_draw["drwNo"]}회차 ({latest_draw["date"]}) — {", ".join(str(n) for n in latest_draw["numbers"])}</p>
-      <section>
-        <h2>{next_draw}회차 예측</h2>
-        <div class="summary-box">{last_hits_summary}</div>
+      <p class="body-1">최근 실제 당첨 · <span class="table-numeric">{latest_draw["drwNo"]}회차</span> ({latest_draw["date"]})</p>
+      <p class="ball-row">{latest_balls}</p>
+
+      <section class="card">
+        <h2 class="h3">{next_draw}회차 예측</h2>
+        <p class="body-1" style="margin:0 0 12px">{last_hits_summary}</p>
         <ul class="pred-list">
 {pred_rows}
         </ul>
-        <p class="note">예측 파일: {pred_filename}</p>
+        <p class="caption">예측 파일: {pred_filename}</p>
       </section>
-{trend_section}"""
+{trend_section}
+      <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>"""
     return html, trend_script
 
 
 def render_sidebar(reports: list[tuple[int, object, str]]) -> str:
     """reports/index.html과 동일한 회차별 아코디언 목록을 사이드바에 그대로 재사용한다."""
     if not reports:
-        return '<p class="note" style="padding:8px 16px">아직 생성된 리포트가 없습니다.</p>'
-
-    import itertools
+        return '<p class="caption" style="padding:8px 16px">아직 생성된 리포트가 없습니다.</p>'
 
     groups = []
     for next_draw, group in itertools.groupby(reports, key=lambda r: r[0]):
@@ -149,43 +172,102 @@ def main() -> None:
     sidebar_html = render_sidebar(reports)
 
     html = f"""<title>로또 대시보드</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
+  :root {{
+    --blue-500: oklch(0.624 0.176 254);
+    --blue-50:  oklch(0.965 0.020 250);
+    --grey-900: oklch(0.234 0.030 254);
+    --grey-700: oklch(0.452 0.028 253);
+    --grey-400: oklch(0.752 0.016 251);
+    --grey-200: oklch(0.913 0.008 247);
+    --grey-100: oklch(0.957 0.005 247);
+    --grey-50:  oklch(0.978 0.003 247);
+    --white:    oklch(1.000 0.000 0);
+    --red-500:  oklch(0.628 0.218 22);
+    --green-500: oklch(0.493 0.143 154);
+    --ball-yellow: oklch(0.853 0.156 86);
+    --ball-blue:   oklch(0.624 0.176 254);
+    --ball-red:    oklch(0.628 0.218 22);
+    --ball-grey:   oklch(0.555 0.022 253);
+    --ball-green:  oklch(0.493 0.143 154);
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: oklch(0.155 0.060 261 / 0.58);
+    --border-secondary: var(--grey-200);
+    --shadow-1: 0 1px 2px oklch(0.155 0.060 261 / 0.06), 0 1px 1px oklch(0.155 0.060 261 / 0.04);
+  }}
   * {{ box-sizing: border-box; }}
-  body {{ margin: 0; font-family: "Noto Sans KR", system-ui, sans-serif; color: #1c1c1c; }}
+  body {{
+    margin: 0; color: var(--text-primary); background: var(--white);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }}
+  .h3 {{ font-size: 20px; font-weight: 700; line-height: 1.35; letter-spacing: -0.015em; margin: 0 0 12px; }}
+  .body-1 {{ font-size: 15px; font-weight: 400; line-height: 1.5; letter-spacing: -0.005em; margin: 0; }}
+  .caption {{ font-size: 12px; font-weight: 500; line-height: 1.4; color: var(--text-tertiary); margin: 8px 0 0; }}
+  .footnote {{ font-size: 12px; font-weight: 500; line-height: 1.4; color: var(--text-tertiary); margin-top: 24px; }}
+  .table-numeric {{ font-variant-numeric: tabular-nums; }}
+
   .layout {{ display: flex; height: 100vh; }}
-  .sidebar {{ width: 260px; flex: none; overflow-y: auto; border-right: 1px solid #e4e2da; background: #fbfaf7; }}
-  .sidebar h1 {{ font-size: 13px; font-weight: 700; padding: 16px 16px 10px; margin: 0; }}
-  .sidebar > ul {{ list-style: none; margin: 0; padding: 0 8px 12px; }}
-  .home-link {{ display: block; padding: 8px 8px; margin: 0 8px 6px; border-radius: 6px; font-size: 12.5px; font-weight: 700; color: #1f3a5f; text-decoration: none; background: #e4e9ef; }}
+  .sidebar {{ width: 260px; flex: none; overflow-y: auto; border-right: 1px solid var(--border-secondary); background: var(--grey-50); }}
+  .sidebar-title {{ height: 56px; display: flex; align-items: center; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; padding: 0 16px; margin: 0; border-bottom: 1px solid var(--border-secondary); }}
+  .sidebar > ul {{ list-style: none; margin: 0; padding: 8px 8px 12px; }}
+  .home-link {{
+    display: block; padding: 8px 12px; margin: 8px 8px 6px; border-radius: 12px;
+    font-size: 15px; font-weight: 600; color: var(--blue-500); text-decoration: none; background: var(--blue-50);
+  }}
 
   .draw-group {{ margin-bottom: 2px; }}
   .draw-group.is-hidden {{ display: none; }}
-  .draw-header {{ width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 8px 8px; border-radius: 6px; font: inherit; text-align: left; }}
-  .draw-header:hover {{ background: #f0efe8; }}
-  .draw-header .chevron {{ font-size: 10px; color: #9a9a90; transition: transform 0.15s ease; flex: none; }}
+  .draw-header {{ width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 8px 8px; border-radius: 12px; font: inherit; text-align: left; }}
+  .draw-header:hover {{ background: var(--grey-100); }}
+  .draw-header .chevron {{ font-size: 10px; color: var(--grey-400); transition: transform 200ms cubic-bezier(0.16,1,0.3,1); flex: none; }}
   .draw-header[aria-expanded="true"] .chevron {{ transform: rotate(90deg); }}
   .draw-label {{ flex: 1; font-size: 12.5px; font-weight: 600; }}
-  .draw-count {{ font-size: 10.5px; color: #8a8878; background: #ecebe3; border-radius: 10px; padding: 1px 7px; }}
-  .draw-body {{ list-style: none; margin: 0; padding: 0; max-height: 0; overflow: hidden; transition: max-height 0.2s ease; }}
+  .draw-count {{ font-size: 10.5px; color: var(--text-secondary); background: var(--grey-100); border-radius: 999px; padding: 1px 7px; }}
+  .draw-body {{ list-style: none; margin: 0; padding: 0; max-height: 0; overflow: hidden; transition: max-height 200ms cubic-bezier(0.16,1,0.3,1); }}
   .draw-body[data-open="true"] {{ max-height: 400px; }}
-  .draw-body li a {{ display: block; padding: 6px 10px 6px 30px; font-size: 12.5px; text-decoration: none; color: #55534a; border-radius: 6px; margin: 1px 4px; }}
-  .draw-body li a:hover {{ background: #f0efe8; }}
-  .draw-body li a.active {{ background: #1f3a5f; color: #fff; font-weight: 600; }}
+  .draw-body li a {{ display: block; padding: 6px 10px 6px 30px; font-size: 12.5px; text-decoration: none; color: var(--text-secondary); border-radius: 12px; margin: 1px 4px; }}
+  .draw-body li a:hover {{ background: var(--grey-100); }}
+  .draw-body li a.active {{ background: var(--blue-500); color: var(--white); font-weight: 600; }}
 
   .main {{ flex: 1; overflow-y: auto; }}
   #dashboard-view {{ max-width: 640px; margin: 0 auto; padding: 24px 20px 60px; }}
-  #dashboard-view h2 {{ font-size: 14px; border-bottom: 1.5px solid #1c1c1c; padding-bottom: 6px; }}
-  #dashboard-view section {{ margin-bottom: 28px; }}
-  .summary-box {{ background: #ecebe3; border-left: 3px solid #1f3a5f; padding: 12px 16px; font-size: 13px; margin-bottom: 8px; }}
+  .card {{
+    border: 1px solid var(--border-secondary); border-radius: 16px; box-shadow: var(--shadow-1);
+    padding: 20px; margin-bottom: 16px;
+  }}
+  .ball-row {{ margin: 8px 0 24px; line-height: 1; }}
+  .number-ball {{
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 999px; margin-right: 6px;
+    font-size: 15px; font-weight: 600; color: var(--white); font-variant-numeric: tabular-nums;
+  }}
+  .number-ball.ball-yellow {{ background: var(--ball-yellow); color: var(--grey-900); }}
+  .number-ball.ball-blue {{ background: var(--ball-blue); }}
+  .number-ball.ball-red {{ background: var(--ball-red); }}
+  .number-ball.ball-grey {{ background: var(--ball-grey); }}
+  .number-ball.ball-green {{ background: var(--ball-green); }}
+  .number-ball.hit {{ outline: 2px solid var(--green-500); outline-offset: 1px; }}
+
   ul.pred-list {{ list-style: none; margin: 0; padding: 0; }}
-  ul.pred-list li {{ display: flex; gap: 12px; padding: 6px 0; border-bottom: 1px solid #eee; font-variant-numeric: tabular-nums; }}
-  .set-idx {{ color: #8a8878; width: 16px; }}
-  .note {{ font-size: 12px; color: #6b6a60; }}
+  .pred-row {{ display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); }}
+  .pred-row:last-child {{ border-bottom: none; }}
+  .set-idx {{ color: var(--text-tertiary); width: 16px; font-size: 12px; font-weight: 500; flex: none; }}
+  .set-nums {{ line-height: 1; }}
+  .set-nums .number-ball {{ width: 28px; height: 28px; font-size: 13px; margin-right: 4px; }}
+
+  .accuracy-badge {{
+    display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 10px;
+    font-size: 15px; font-weight: 600; background: var(--blue-50); color: var(--blue-500);
+  }}
+  .accuracy-badge.dim {{ background: var(--grey-100); color: var(--text-secondary); }}
+
   iframe {{ width: 100%; height: 100%; border: none; }}
 </style>
 <div class="layout">
   <nav class="sidebar">
-    <h1>로또 대시보드</h1>
+    <h1 class="sidebar-title">로또 대시보드</h1>
     <a href="#" id="home-link" class="home-link">대시보드 홈</a>
     <ul id="group-list">
 {sidebar_html}
