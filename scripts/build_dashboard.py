@@ -80,6 +80,21 @@ def rules_summary_line(rules: dict) -> str:
     )
 
 
+def recent_draws_rows(draws: list[dict], n: int = 5) -> str:
+    rows = []
+    for d in reversed(draws[-n:]):
+        balls = " ".join(number_ball(x) for x in d["numbers"])
+        amount = d.get("firstPrizeAmount")
+        amount_label = f'{amount:,}원' if amount is not None else "정보 없음"
+        rows.append(f"""          <li class="recent-row">
+            <span class="recent-no table-numeric">{d["drwNo"]}회</span>
+            <span class="recent-date table-numeric">{d["date"]}</span>
+            <span class="recent-balls">{balls}</span>
+            <span class="recent-amount table-numeric">1등 {amount_label}</span>
+          </li>""")
+    return "\n".join(rows)
+
+
 def render_summary(
     draws: list[dict],
     latest_draw: dict,
@@ -98,7 +113,7 @@ def render_summary(
     """
     based_on = pred_data["based_on_drwNo"]
     next_draw = based_on + 1
-    latest_balls = " ".join(number_ball(n) for n in latest_draw["numbers"])
+    recent_rows = recent_draws_rows(draws)
 
     rounds = sorted({e["next_draw"] for e in all_predictions}, reverse=True)
     round_options = "\n".join(
@@ -185,9 +200,13 @@ def render_summary(
 """
 
     html = f"""
-      <p class="body-1">최근 실제 당첨 · <span class="table-numeric">{latest_draw["drwNo"]}회차</span> ({latest_draw["date"]})</p>
-      <p class="ball-row">{latest_balls}</p>
-      <p class="caption">{dday_label}</p>
+      <section class="card">
+        <h2 class="h3">최근 5회차 당첨결과</h2>
+        <ul class="recent-list">
+{recent_rows}
+        </ul>
+        <p class="caption">{dday_label}</p>
+      </section>
 
       <section class="card">
         <div class="pred-header">
@@ -420,7 +439,6 @@ def main() -> None:
     background: var(--grey-50); border: 1px solid var(--border-secondary); border-radius: 8px;
     padding: 6px 10px; cursor: pointer;
   }}
-  .ball-row {{ margin: 8px 0 24px; line-height: 1; display: flex; flex-wrap: wrap; gap: 6px; }}
   .number-ball {{
     display: inline-flex; align-items: center; justify-content: center;
     width: 32px; height: 32px; border-radius: 999px; margin-right: 6px;
@@ -439,6 +457,15 @@ def main() -> None:
   .set-idx {{ color: var(--text-tertiary); width: 16px; font-size: 12px; font-weight: 500; flex: none; }}
   .set-nums {{ line-height: 1; }}
   .set-nums .number-ball {{ width: 28px; height: 28px; font-size: 13px; margin-right: 4px; }}
+
+  .recent-list {{ list-style: none; margin: 0; padding: 0; }}
+  .recent-row {{ display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); flex-wrap: wrap; }}
+  .recent-row:last-child {{ border-bottom: none; }}
+  .recent-no {{ font-size: 13px; font-weight: 700; width: 44px; flex: none; }}
+  .recent-date {{ font-size: 12px; color: var(--text-tertiary); width: 84px; flex: none; }}
+  .recent-balls {{ line-height: 1; }}
+  .recent-balls .number-ball {{ width: 26px; height: 26px; font-size: 12px; margin-right: 4px; }}
+  .recent-amount {{ font-size: 12.5px; font-weight: 600; color: var(--text-secondary); margin-left: auto; }}
 
   .accuracy-badge {{
     display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 10px;

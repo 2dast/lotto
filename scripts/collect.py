@@ -68,6 +68,7 @@ def item_to_draw(item: dict) -> dict:
         "date": f"{ymd[0:4]}-{ymd[4:6]}-{ymd[6:8]}",
         "numbers": [item[f"tm{i}WnNo"] for i in range(1, 7)],
         "bonusNo": item["bnsWnNo"],
+        "firstPrizeAmount": item["rnk1WnAmt"],
     }
 
 

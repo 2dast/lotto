@@ -14,6 +14,7 @@ def make_item(ltEpsd: int) -> dict:
         "tm4WnNo": 4, "tm5WnNo": 5, "tm6WnNo": 6,
         "bnsWnNo": 7,
         "ltRflYmd": "20260101",
+        "rnk1WnAmt": 1000000000,
     }
 
 

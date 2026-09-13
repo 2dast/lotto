@@ -16078,7 +16078,8 @@
       37,
       40
     ],
-    "bonusNo": 36
+    "bonusNo": 36,
+    "firstPrizeAmount": 1214932680
   },
   {
     "drwNo": 1238,
@@ -16091,7 +16092,8 @@
       38,
       42
     ],
-    "bonusNo": 22
+    "bonusNo": 22,
+    "firstPrizeAmount": 1197258718
   },
   {
     "drwNo": 1239,
@@ -16104,7 +16106,8 @@
       33,
       36
     ],
-    "bonusNo": 8
+    "bonusNo": 8,
+    "firstPrizeAmount": 2214789375
   },
   {
     "drwNo": 1240,
@@ -16117,7 +16120,8 @@
       31,
       44
     ],
-    "bonusNo": 27
+    "bonusNo": 27,
+    "firstPrizeAmount": 1791817758
   },
   {
     "drwNo": 1241,
@@ -16130,6 +16134,7 @@
       24,
       43
     ],
-    "bonusNo": 9
+    "bonusNo": 9,
+    "firstPrizeAmount": 1628391980
   }
 ]
