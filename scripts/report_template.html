@@ -219,6 +219,7 @@ svg .axis-line { stroke: var(--rule); stroke-width: 1; }
 .bar.in-range { fill: var(--navy); opacity: 1; }
 .pred-marker { fill: var(--up); }
 .pred-marker-label { fill: var(--up); font-size: 9px; font-weight: 700; }
+.pred-marker-tri { fill: var(--up); }
 
 .grid-2 {
   display: grid;
@@ -364,7 +365,7 @@ td.new { color: var(--down); font-weight: 700; }
     </section>
     <section>
       <h2><span class="roman">Ⅳ.</span> 구간별 평균 출현</h2>
-      <p class="section-desc">1~39는 0~3개, 40~45는 0~2개 규칙</p>
+      <p class="section-desc">1~39는 0~3개, 40~45는 0~2개 규칙. 빨간 삼각형 = 이번 예측 세트들의 구간별 평균 개수.</p>
       <svg viewBox="0 0 300 190" width="100%" height="190" id="chart-zone"></svg>
     </section>
   </div>
@@ -430,7 +431,7 @@ function barChart(svg, values, labels, opts) {
   const n = values.length;
   const gap = 6;
   const barW = (plotW - gap * (n - 1)) / n;
-  const maxV = Math.max(...values);
+  const maxV = opts.scaleMax || Math.max(...values);
 
   svg.appendChild(svgEl("line", {x1: padL, y1: H - padB, x2: W - padR, y2: H - padB, class: "axis-line"}));
 
@@ -486,6 +487,11 @@ const predSumBinIdx = predSums.map(s => {
   const idx = Math.floor((s - DATA.sum_bins[0]) / 10);
   return Math.min(Math.max(idx, 0), DATA.sum_bins.length - 1);
 });
+const ZONE_RANGES = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 45]];
+const predZoneAvgs = ZONE_RANGES.map(([lo, hi]) => {
+  const counts = DATA.predictions.map(c => c.filter(n => n >= lo && n <= hi).length);
+  return counts.reduce((a, b) => a + b, 0) / counts.length;
+});
 
 barChart(document.getElementById("chart-odd"), DATA.odd_dist, [0,1,2,3,4,5,6],
   {showValue: true, highlight: i => i >= 1 && i <= 5, markerCounts: countBy(predOddCounts, 7)});
@@ -497,18 +503,31 @@ barChart(document.getElementById("chart-sum"), DATA.sum_hist,
 barChart(document.getElementById("chart-run"), DATA.run_dist, [1,2,3,4],
   {showValue: true, highlight: i => i <= 2, markerCounts: countBy(predRuns.map(r => r - 1), 4)});
 
+const zoneScaleMax = Math.max(...DATA.zone_avgs, ...predZoneAvgs) * 1.25;
 barChart(document.getElementById("chart-zone"), DATA.zone_avgs, DATA.zone_labels,
-  {showValue: false, highlight: () => true});
+  {showValue: false, highlight: () => true, scaleMax: zoneScaleMax});
 (function(){
   const svg = document.getElementById("chart-zone");
   const rects = svg.querySelectorAll("rect");
+  const H = svg.viewBox.baseVal.height, padB = 26, plotH = H - 14 - padB;
   DATA.zone_avgs.forEach((v, i) => {
     const r = rects[i];
-    const t = svgEl("text", {x: parseFloat(r.getAttribute("x")) + parseFloat(r.getAttribute("width"))/2,
-      y: parseFloat(r.getAttribute("y")) - 4, "text-anchor": "middle"});
+    const x = parseFloat(r.getAttribute("x")), w = parseFloat(r.getAttribute("width"));
+    const t = svgEl("text", {x: x + w / 2, y: parseFloat(r.getAttribute("y")) - 4, "text-anchor": "middle"});
     t.setAttribute("class", "value-label");
     t.textContent = v.toFixed(2);
     svg.appendChild(t);
+
+    const predY = H - padB - (predZoneAvgs[i] / zoneScaleMax) * plotH;
+    const cx = x + w / 2;
+    svg.appendChild(svgEl("path", {
+      d: `M ${cx - 4} ${predY + 3} L ${cx + 4} ${predY + 3} L ${cx} ${predY - 4} Z`,
+      class: "pred-marker-tri"
+    }));
+    const pt = svgEl("text", {x: cx, y: predY - 7, "text-anchor": "middle"});
+    pt.setAttribute("class", "pred-marker-label");
+    pt.textContent = predZoneAvgs[i].toFixed(2);
+    svg.appendChild(pt);
   });
 })();
 
