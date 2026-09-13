@@ -1,50 +1,120 @@
 <title>로또 대시보드</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
+  :root {
+    --blue-500: oklch(0.624 0.176 254);
+    --blue-50:  oklch(0.965 0.020 250);
+    --grey-900: oklch(0.234 0.030 254);
+    --grey-700: oklch(0.452 0.028 253);
+    --grey-400: oklch(0.752 0.016 251);
+    --grey-200: oklch(0.913 0.008 247);
+    --grey-100: oklch(0.957 0.005 247);
+    --grey-50:  oklch(0.978 0.003 247);
+    --white:    oklch(1.000 0.000 0);
+    --red-500:  oklch(0.628 0.218 22);
+    --green-500: oklch(0.493 0.143 154);
+    --ball-yellow: oklch(0.853 0.156 86);
+    --ball-blue:   oklch(0.624 0.176 254);
+    --ball-red:    oklch(0.628 0.218 22);
+    --ball-grey:   oklch(0.555 0.022 253);
+    --ball-green:  oklch(0.493 0.143 154);
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: oklch(0.155 0.060 261 / 0.58);
+    --border-secondary: var(--grey-200);
+    --shadow-1: 0 1px 2px oklch(0.155 0.060 261 / 0.06), 0 1px 1px oklch(0.155 0.060 261 / 0.04);
+  }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: "Noto Sans KR", system-ui, sans-serif; color: #1c1c1c; }
+  body {
+    margin: 0; color: var(--text-primary); background: var(--white);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  .h3 { font-size: 20px; font-weight: 700; line-height: 1.35; letter-spacing: -0.015em; margin: 0 0 12px; }
+  .body-1 { font-size: 15px; font-weight: 400; line-height: 1.5; letter-spacing: -0.005em; margin: 0; }
+  .caption { font-size: 12px; font-weight: 500; line-height: 1.4; color: var(--text-tertiary); margin: 8px 0 0; }
+  .footnote { font-size: 12px; font-weight: 500; line-height: 1.4; color: var(--text-tertiary); margin-top: 24px; }
+  .table-numeric { font-variant-numeric: tabular-nums; }
+
   .layout { display: flex; height: 100vh; }
-  .sidebar { width: 260px; flex: none; overflow-y: auto; border-right: 1px solid #e4e2da; background: #fbfaf7; }
-  .sidebar h1 { font-size: 13px; font-weight: 700; padding: 16px 16px 10px; margin: 0; }
-  .sidebar > ul { list-style: none; margin: 0; padding: 0 8px 12px; }
-  .home-link { display: block; padding: 8px 8px; margin: 0 8px 6px; border-radius: 6px; font-size: 12.5px; font-weight: 700; color: #1f3a5f; text-decoration: none; background: #e4e9ef; }
+  .sidebar { width: 260px; flex: none; overflow-y: auto; border-right: 1px solid var(--border-secondary); background: var(--grey-50); }
+  .sidebar-title { height: 56px; display: flex; align-items: center; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; padding: 0 16px; margin: 0; border-bottom: 1px solid var(--border-secondary); }
+  .sidebar > ul { list-style: none; margin: 0; padding: 8px 8px 12px; }
+  .home-link {
+    display: block; padding: 8px 12px; margin: 8px 8px 6px; border-radius: 12px;
+    font-size: 15px; font-weight: 600; color: var(--blue-500); text-decoration: none; background: var(--blue-50);
+  }
 
   .draw-group { margin-bottom: 2px; }
   .draw-group.is-hidden { display: none; }
-  .draw-header { width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 8px 8px; border-radius: 6px; font: inherit; text-align: left; }
-  .draw-header:hover { background: #f0efe8; }
-  .draw-header .chevron { font-size: 10px; color: #9a9a90; transition: transform 0.15s ease; flex: none; }
+  .draw-header { width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 8px 8px; border-radius: 12px; font: inherit; text-align: left; }
+  .draw-header:hover { background: var(--grey-100); }
+  .draw-header .chevron { font-size: 10px; color: var(--grey-400); transition: transform 200ms cubic-bezier(0.16,1,0.3,1); flex: none; }
   .draw-header[aria-expanded="true"] .chevron { transform: rotate(90deg); }
   .draw-label { flex: 1; font-size: 12.5px; font-weight: 600; }
-  .draw-count { font-size: 10.5px; color: #8a8878; background: #ecebe3; border-radius: 10px; padding: 1px 7px; }
-  .draw-body { list-style: none; margin: 0; padding: 0; max-height: 0; overflow: hidden; transition: max-height 0.2s ease; }
+  .draw-count { font-size: 10.5px; color: var(--text-secondary); background: var(--grey-100); border-radius: 999px; padding: 1px 7px; }
+  .draw-body { list-style: none; margin: 0; padding: 0; max-height: 0; overflow: hidden; transition: max-height 200ms cubic-bezier(0.16,1,0.3,1); }
   .draw-body[data-open="true"] { max-height: 400px; }
-  .draw-body li a { display: block; padding: 6px 10px 6px 30px; font-size: 12.5px; text-decoration: none; color: #55534a; border-radius: 6px; margin: 1px 4px; }
-  .draw-body li a:hover { background: #f0efe8; }
-  .draw-body li a.active { background: #1f3a5f; color: #fff; font-weight: 600; }
+  .draw-body li a { display: block; padding: 6px 10px 6px 30px; font-size: 12.5px; text-decoration: none; color: var(--text-secondary); border-radius: 12px; margin: 1px 4px; }
+  .draw-body li a:hover { background: var(--grey-100); }
+  .draw-body li a.active { background: var(--blue-500); color: var(--white); font-weight: 600; }
 
   .main { flex: 1; overflow-y: auto; }
   #dashboard-view { max-width: 640px; margin: 0 auto; padding: 24px 20px 60px; }
-  #dashboard-view h2 { font-size: 14px; border-bottom: 1.5px solid #1c1c1c; padding-bottom: 6px; }
-  #dashboard-view section { margin-bottom: 28px; }
-  .summary-box { background: #ecebe3; border-left: 3px solid #1f3a5f; padding: 12px 16px; font-size: 13px; margin-bottom: 8px; }
+  .card {
+    border: 1px solid var(--border-secondary); border-radius: 16px; box-shadow: var(--shadow-1);
+    padding: 20px; margin-bottom: 16px;
+  }
+  .ball-row { margin: 8px 0 24px; line-height: 1; }
+  .number-ball {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 999px; margin-right: 6px;
+    font-size: 15px; font-weight: 600; color: var(--white); font-variant-numeric: tabular-nums;
+  }
+  .number-ball.ball-yellow { background: var(--ball-yellow); color: var(--grey-900); }
+  .number-ball.ball-blue { background: var(--ball-blue); }
+  .number-ball.ball-red { background: var(--ball-red); }
+  .number-ball.ball-grey { background: var(--ball-grey); }
+  .number-ball.ball-green { background: var(--ball-green); }
+  .number-ball.hit { outline: 2px solid var(--green-500); outline-offset: 1px; }
+
   ul.pred-list { list-style: none; margin: 0; padding: 0; }
-  ul.pred-list li { display: flex; gap: 12px; padding: 6px 0; border-bottom: 1px solid #eee; font-variant-numeric: tabular-nums; }
-  .set-idx { color: #8a8878; width: 16px; }
-  .note { font-size: 12px; color: #6b6a60; }
+  .pred-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); }
+  .pred-row:last-child { border-bottom: none; }
+  .set-idx { color: var(--text-tertiary); width: 16px; font-size: 12px; font-weight: 500; flex: none; }
+  .set-nums { line-height: 1; }
+  .set-nums .number-ball { width: 28px; height: 28px; font-size: 13px; margin-right: 4px; }
+
+  .accuracy-badge {
+    display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 10px;
+    font-size: 15px; font-weight: 600; background: var(--blue-50); color: var(--blue-500);
+  }
+  .accuracy-badge.dim { background: var(--grey-100); color: var(--text-secondary); }
+
   iframe { width: 100%; height: 100%; border: none; }
 </style>
 <div class="layout">
   <nav class="sidebar">
-    <h1>로또 대시보드</h1>
+    <h1 class="sidebar-title">로또 대시보드</h1>
     <a href="#" id="home-link" class="home-link">대시보드 홈</a>
     <ul id="group-list">
         <li class="draw-group">
           <button class="draw-header" type="button" aria-expanded="true">
             <span class="chevron">&#9656;</span>
-            <span class="draw-label">1241회차 예측</span>
-            <span class="draw-count">12</span>
+            <span class="draw-label">1242회차 예측</span>
+            <span class="draw-count">1</span>
           </button>
           <ul class="draw-body" data-open="true">
+            <li><a href="#" data-src="reports/lotto_report_20260913_155942.html">2026-09-13 15:59</a></li>
+          </ul>
+        </li>
+        <li class="draw-group">
+          <button class="draw-header" type="button" aria-expanded="false">
+            <span class="chevron">&#9656;</span>
+            <span class="draw-label">1241회차 예측</span>
+            <span class="draw-count">13</span>
+          </button>
+          <ul class="draw-body">
+            <li><a href="#" data-src="reports/lotto_report_20260913_153259.html">2026-09-13 15:32</a></li>
             <li><a href="#" data-src="reports/lotto_report_20260913_152221.html">2026-09-13 15:22</a></li>
             <li><a href="#" data-src="reports/lotto_report_20260913_152045.html">2026-09-13 15:20</a></li>
             <li><a href="#" data-src="reports/lotto_report_20260913_151957.html">2026-09-13 15:19</a></li>
@@ -63,30 +133,66 @@
   </nav>
   <main class="main">
     <div id="dashboard-view">
-      <p class="note">최근 실제 당첨: 1240회차 (2026-09-05) — 11, 13, 19, 20, 31, 44</p>
-      <section>
-        <h2>1241회차 예측</h2>
-        <div class="summary-box">아직 적중 이력 없음 — 다음 회차부터 집계 시작</div>
+      <p class="body-1">최근 실제 당첨 · <span class="table-numeric">1241회차</span> (2026-09-12)</p>
+      <p class="ball-row"><span class="number-ball ball-yellow">7</span> <span class="number-ball ball-blue">13</span> <span class="number-ball ball-blue">16</span> <span class="number-ball ball-red">23</span> <span class="number-ball ball-red">24</span> <span class="number-ball ball-green">43</span></p>
+
+      <section class="card">
+        <h2 class="h3">1242회차 예측</h2>
+        <p class="body-1" style="margin:0 0 12px">1241회차 결과 대비 5세트 적중 <span class="accuracy-badge dim">0개</span> <span class="accuracy-badge dim">0개</span> <span class="accuracy-badge">1개</span> <span class="accuracy-badge dim">0개</span> <span class="accuracy-badge">1개</span> (최고 1개)</p>
         <ul class="pred-list">
-          <li><span class="set-idx">1</span><span class="set-nums">3 · 14 · 23 · 26 · 38 · 40</span></li>
-          <li><span class="set-idx">2</span><span class="set-nums">5 · 8 · 11 · 19 · 22 · 31</span></li>
-          <li><span class="set-idx">3</span><span class="set-nums">2 · 15 · 20 · 29 · 39 · 45</span></li>
-          <li><span class="set-idx">4</span><span class="set-nums">7 · 9 · 17 · 27 · 42 · 44</span></li>
-          <li><span class="set-idx">5</span><span class="set-nums">14 · 18 · 19 · 28 · 43 · 44</span></li>
+          <li class="pred-row"><span class="set-idx">1</span><span class="set-nums"><span class="number-ball ball-yellow">6</span> <span class="number-ball ball-blue">11</span> <span class="number-ball ball-blue">13</span> <span class="number-ball ball-blue">20</span> <span class="number-ball ball-green">42</span> <span class="number-ball ball-green">43</span></span></li>
+          <li class="pred-row"><span class="set-idx">2</span><span class="set-nums"><span class="number-ball ball-yellow">7</span> <span class="number-ball ball-blue">16</span> <span class="number-ball ball-blue">20</span> <span class="number-ball ball-red">25</span> <span class="number-ball ball-grey">36</span> <span class="number-ball ball-green">41</span></span></li>
+          <li class="pred-row"><span class="set-idx">3</span><span class="set-nums"><span class="number-ball ball-blue">11</span> <span class="number-ball ball-blue">12</span> <span class="number-ball ball-blue">19</span> <span class="number-ball ball-red">21</span> <span class="number-ball ball-grey">37</span> <span class="number-ball ball-grey">38</span></span></li>
+          <li class="pred-row"><span class="set-idx">4</span><span class="set-nums"><span class="number-ball ball-yellow">4</span> <span class="number-ball ball-blue">17</span> <span class="number-ball ball-red">22</span> <span class="number-ball ball-grey">34</span> <span class="number-ball ball-grey">35</span> <span class="number-ball ball-grey">37</span></span></li>
+          <li class="pred-row"><span class="set-idx">5</span><span class="set-nums"><span class="number-ball ball-yellow">2</span> <span class="number-ball ball-yellow">9</span> <span class="number-ball ball-blue">16</span> <span class="number-ball ball-blue">18</span> <span class="number-ball ball-grey">35</span> <span class="number-ball ball-green">41</span></span></li>
         </ul>
-        <p class="note">예측 파일: predictions_20260913_152221.json</p>
+        <p class="caption">예측 파일: predictions_20260913_155942.json</p>
       </section>
 
-      <section>
-        <h2>적중 이력 추세</h2>
-        <p class="note">아직 적중 이력 없음 — 다음 회차 추첨 이후부터 집계가 시작됩니다.</p>
+      <section class="card">
+        <h2 class="h3">적중 이력 추세</h2>
+        <svg id="chart-trend" viewBox="0 0 600 200" width="100%"></svg>
+        <p class="caption">회차별 5세트 중 최고 적중개수(막대) — 무작위 기대값 0.8개와 비교, 최고 기록만 강조.</p>
       </section>
+      <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>
     </div>
     <iframe id="viewer" hidden></iframe>
   </main>
 </div>
 <script>
 
+    const HISTORY = [{"drwNo": 1241, "best": 1, "avg": 0.4}];
+    (function(){
+      const svg = document.getElementById("chart-trend");
+      if (!svg) return;
+      const styles = getComputedStyle(document.documentElement);
+      const brand = styles.getPropertyValue("--blue-500").trim();
+      const grey = styles.getPropertyValue("--grey-200").trim();
+      const danger = styles.getPropertyValue("--red-500").trim();
+      const W = 600, H = 200, padL = 30, padR = 10, padT = 10, padB = 24;
+      const plotW = W - padL - padR, plotH = H - padT - padB;
+      const n = HISTORY.length;
+      const gap = 6;
+      const barW = (plotW - gap * (n - 1)) / n;
+      const maxV = Math.max(...HISTORY.map(h => h.best), 1);
+      const peakBest = Math.max(...HISTORY.map(h => h.best));
+      function el(tag, attrs) {
+        const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+        for (const k in attrs) e.setAttribute(k, attrs[k]);
+        return e;
+      }
+      const baselineY = H - padB - (0.8 / maxV) * plotH;
+      svg.appendChild(el("line", {x1: padL, y1: baselineY, x2: W - padR, y2: baselineY, stroke: danger, "stroke-dasharray": "4 3"}));
+      HISTORY.forEach((h, i) => {
+        const x = padL + i * (barW + gap);
+        const barH = (h.best / maxV) * plotH;
+        const y = H - padB - barH;
+        svg.appendChild(el("rect", {x, y, width: barW, height: Math.max(barH, 1), rx: 2, fill: h.best === peakBest ? brand : grey}));
+        const lbl = el("text", {x: x + barW / 2, y: H - padB + 14, "text-anchor": "middle", "font-size": "9", fill: styles.getPropertyValue("--text-tertiary").trim()});
+        lbl.textContent = h.drwNo;
+        svg.appendChild(lbl);
+      });
+    })();
 
 document.querySelectorAll('.draw-header').forEach(btn => {
   btn.addEventListener('click', () => {
