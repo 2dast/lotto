@@ -203,7 +203,7 @@ def render_summary(
 """
 
     html = f"""
-      <section class="card dash-left">
+      <section class="card">
         <div class="pred-header">
           <h2 class="h3" id="pred-title">{next_draw}회차 예측</h2>
           <div class="select-row">
@@ -218,7 +218,7 @@ def render_summary(
         <p class="caption" id="pred-file-caption">예측 파일: {pred_filename} · 스크리닝 조건: {rules_line}</p>
       </section>
 
-      <section class="card dash-right">
+      <section class="card">
         <h2 class="h3">최근 5회차 당첨결과</h2>
         <ul class="recent-list">
 {recent_rows}
@@ -404,8 +404,6 @@ def main() -> None:
       z-index: 15; opacity: 0; pointer-events: none; transition: opacity 200ms ease;
     }}
     .sidebar-backdrop.is-open {{ opacity: 1; pointer-events: auto; }}
-    #dashboard-view {{ grid-template-columns: 1fr; }}
-    .dash-left, .dash-right {{ grid-column: 1; }}
   }}
   .sidebar-title {{ font-size: 12px; font-weight: 700; color: var(--text-tertiary); letter-spacing: 0.02em; padding: 16px 16px 8px; margin: 0; }}
   .sidebar > ul {{ list-style: none; margin: 0; padding: 8px 8px 12px; }}
@@ -434,11 +432,9 @@ def main() -> None:
   .main {{ flex: 1; overflow-y: auto; }}
   #dashboard-view {{
     max-width: 1120px; margin: 0 auto; padding: 20px; box-sizing: border-box;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px;
   }}
   #dashboard-view[hidden] {{ display: none; }}
-  .dash-left {{ grid-column: 1; }}
-  .dash-right {{ grid-column: 2; }}
   .dash-footer {{ grid-column: 1 / -1; display: flex; gap: 16px; flex-wrap: wrap; }}
   .dash-footer .footnote {{ margin: 0; }}
   .card {{
