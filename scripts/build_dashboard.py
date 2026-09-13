@@ -97,6 +97,7 @@ def render_summary(
     all_freq: list[int],
     rules_line: str,
     dday_label: str,
+    generated_at_label: str,
 ) -> tuple[str, str]:
     """대시보드 메인 화면(요약 + 예측 + 추세)의 HTML과 <script>를 반환한다.
 
@@ -302,11 +303,13 @@ def render_summary(
       </section>"""
 
     html = f"""
-      <p class="body-1">최근 실제 당첨 · <span class="table-numeric">{latest_draw["drwNo"]}회차</span> ({latest_draw["date"]})</p>
-      <p class="ball-row">{latest_balls}</p>
-      <p class="caption">{dday_label}</p>
+      <div class="dash-top">
+        <p class="body-1">최근 실제 당첨 · <span class="table-numeric">{latest_draw["drwNo"]}회차</span> ({latest_draw["date"]})</p>
+        <p class="ball-row">{latest_balls}</p>
+        <p class="caption">{dday_label}</p>
+      </div>
 
-      <section class="card">
+      <section class="card dash-left">
         <div class="pred-header">
           <h2 class="h3" id="pred-title">{next_draw}회차 예측</h2>
           <div class="select-row">
@@ -321,9 +324,16 @@ def render_summary(
         <ul class="pred-list" id="pred-list"></ul>
         <p class="caption" id="pred-file-caption">예측 파일: {pred_filename}</p>
       </section>
+
+      <div class="dash-right">
 {trend_section}
 {freq_section}
-      <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>"""
+      </div>
+
+      <div class="dash-footer">
+        <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>
+        <p class="footnote">마지막 갱신: {generated_at_label} (KST, GitHub Actions 자동 실행)</p>
+      </div>"""
     return html, shared_script + kpi_script + trend_script
 
 
@@ -366,15 +376,14 @@ def main() -> None:
     all_freq = compute_all_freq(draws)
     rules_line = rules_summary_line(load_rules())
     dday_label = next_draw_date_label(latest_draw)
+    generated_at_label = dt.datetime.now(KST).strftime("%Y-%m-%d %H:%M")
 
     summary_html, trend_script = render_summary(
         draws, latest_draw, pred_filename, pred_data, all_predictions,
-        all_freq, rules_line, dday_label,
+        all_freq, rules_line, dday_label, generated_at_label,
     )
     sidebar_html = render_sidebar(reports)
     next_draw_label = f'{pred_data["based_on_drwNo"] + 1}회차 예측 기준'
-    generated_at_label = dt.datetime.now(KST).strftime("%Y-%m-%d %H:%M")
-    summary_html += f'\n      <p class="footnote">마지막 갱신: {generated_at_label} (KST, GitHub Actions 자동 실행)</p>'
 
     html = f"""<title>로또 대시보드</title>
 <script>
@@ -500,6 +509,12 @@ def main() -> None:
       z-index: 15; opacity: 0; pointer-events: none; transition: opacity 200ms ease;
     }}
     .sidebar-backdrop.is-open {{ opacity: 1; pointer-events: auto; }}
+    .main {{ overflow-y: auto; }}
+    #dashboard-view {{
+      height: auto; grid-template-columns: 1fr; grid-template-rows: auto auto auto auto;
+    }}
+    .dash-left {{ grid-column: 1; overflow-y: visible; }}
+    .dash-right {{ grid-column: 1; overflow-y: visible; }}
   }}
   .sidebar-title {{ font-size: 12px; font-weight: 700; color: var(--text-tertiary); letter-spacing: 0.02em; padding: 16px 16px 8px; margin: 0; }}
   .sidebar > ul {{ list-style: none; margin: 0; padding: 8px 8px 12px; }}
@@ -525,11 +540,19 @@ def main() -> None:
   .draw-body li a:hover {{ background: var(--grey-100); }}
   .draw-body li a.active {{ background: var(--blue-50); color: var(--blue-500); font-weight: 600; border-left-color: var(--blue-500); }}
 
-  .main {{ flex: 1; overflow-y: auto; }}
-  #dashboard-view {{ max-width: 640px; margin: 0 auto; padding: 24px 20px 64px; }}
+  .main {{ flex: 1; overflow: hidden; }}
+  #dashboard-view {{
+    height: 100%; max-width: 1120px; margin: 0 auto; padding: 20px; box-sizing: border-box;
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px;
+  }}
+  .dash-top {{ grid-column: 1 / -1; }}
+  .dash-left {{ grid-column: 1; min-height: 0; overflow-y: auto; }}
+  .dash-right {{ grid-column: 2; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }}
+  .dash-footer {{ grid-column: 1 / -1; display: flex; gap: 16px; flex-wrap: wrap; }}
+  .dash-footer .footnote {{ margin: 0; }}
   .card {{
     border: 1px solid var(--border-secondary); border-radius: 16px; box-shadow: var(--shadow-1);
-    padding: 20px; margin-bottom: 16px;
+    padding: 20px; margin-bottom: 0;
   }}
   .pred-header {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }}
   .pred-header .h3 {{ margin: 0; }}
