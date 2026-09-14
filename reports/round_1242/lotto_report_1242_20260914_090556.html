@@ -267,14 +267,14 @@ svg .axis-line { stroke: var(--rule); stroke-width: 1; }
 
   <div class="masthead">
     <div class="firm">2dast <span>Data Research</span></div>
-    <div class="doc-meta">Report No. LOT-2026-01 &nbsp;·&nbsp; <span id="f-date">2026.09.13</span></div>
+    <div class="doc-meta">Report No. LOT-2026-01 &nbsp;·&nbsp; <span id="f-date">2026.09.14</span></div>
   </div>
 
   <div class="kicker">DATA ANALYSIS &nbsp;/&nbsp; 통계 분석 자료</div>
   <h1>로또 6/45 추천 번호 스크리닝 리포트</h1>
   <p class="subtitle"><span id="f-basedon2">1241</span>회차까지 당첨 데이터로 보정한 스크리닝 조건과, 이를 통과한 <span id="f-nextround">1242</span>회차 추천 세트</p>
   <div class="byline">
-    <span>기준회차: <b><span id="f-basedon">1240</span>회 (차기 예측)</b></span>
+    <span>기준회차: <b><span id="f-basedon">1241</span>회 (차기 예측)</b></span>
     <span>분류: <b>참고자료 · 투자권유 아님</b></span>
   </div>
 
@@ -284,22 +284,22 @@ svg .axis-line { stroke: var(--rule); stroke-width: 1; }
       <div class="r-value">참고용</div>
     </div>
     <div class="key-figures">
-      <div class="kf"><div class="kf-label">분석 회차</div><div class="kf-value"><span id="f-count">1,240</span>회</div></div>
-      <div class="kf"><div class="kf-label">예측 회차</div><div class="kf-value"><span id="f-basedon3">1241</span>회</div></div>
+      <div class="kf"><div class="kf-label">분석 회차</div><div class="kf-value"><span id="f-count">1,241</span>회</div></div>
+      <div class="kf"><div class="kf-label">예측 회차</div><div class="kf-value"><span id="f-basedon3">1242</span>회</div></div>
       <div class="kf"><div class="kf-label">추천 세트</div><div class="kf-value"><span id="f-numsets">5</span>건</div></div>
       <div class="kf"><div class="kf-label">최대 중복</div><div class="kf-value"><span id="f-maxoverlap">2</span>개 세트</div></div>
     </div>
   </div>
 
   <div class="summary-box">
-    <b>Summary —</b> 이 리포트는 <span id="f-basedon5">1241</span>회차 추천 <span id="f-numsets4">5</span>세트가
+    <b>Summary —</b> 이 리포트는 <span id="f-basedon5">1242</span>회차 추천 <span id="f-numsets4">5</span>세트가
     <b>왜 이 번호들로 구성됐는지</b>를 설명하는 문서다. 로또는 회차마다 독립적으로 추첨되어 과거 데이터가
     다음 회차의 당첨 확률 자체를 바꾸지 못하므로, 아래 내용은 "당첨 확률이 높다"는 뜻이 아니라
     <b>스크리닝 조건(Ⅳ장 참고)을 만족하도록 생성된 조합의 상세 내역</b>이다.
   </div>
 
   <section>
-    <h2><span class="roman">Ⅰ.</span> <span id="f-basedon4">1241</span>회차 추천 세트</h2>
+    <h2><span class="roman">Ⅰ.</span> <span id="f-basedon4">1242</span>회차 추천 세트</h2>
     <p class="section-desc">세트별 번호와 핵심 수치</p>
     <div class="table-scroll">
       <table class="screen-table">
@@ -351,7 +351,7 @@ svg .axis-line { stroke: var(--rule); stroke-width: 1; }
         </tbody>
       </table>
     </div>
-    <p class="chart-note">※ 1~<span id="f-total3">1240</span>회차 실제 당첨 데이터를 percentile 분석해 고정한 값이다. 회차가 새로 추가돼도 이 값 자체는 재보정 전까지 그대로 유지된다.</p>
+    <p class="chart-note">※ 1~<span id="f-total3">1241</span>회차 실제 당첨 데이터를 percentile 분석해 고정한 값이다. 회차가 새로 추가돼도 이 값 자체는 재보정 전까지 그대로 유지된다.</p>
   </section>
 
   <div class="disclaimer">
@@ -364,7 +364,7 @@ svg .axis-line { stroke: var(--rule); stroke-width: 1; }
 </div>
 
 <script>
-const DATA = {"predictions": [[3,12,19,24,33,41],[5,14,21,28,32,44],[2,17,23,29,36,40],[8,11,26,31,38,42],[6,15,22,27,34,45]]};
+const DATA = {"predictions": [[2, 18, 19, 39, 42, 44], [4, 7, 14, 18, 34, 42], [7, 10, 18, 37, 42, 44], [11, 15, 18, 22, 31, 33], [8, 12, 18, 34, 35, 40]]};
 
 function svgEl(tag, attrs) {
   const el = document.createElementNS("http://www.w3.org/2000/svg", tag);

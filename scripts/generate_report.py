@@ -60,15 +60,14 @@ def main() -> None:
     today = dt.datetime.now(KST).strftime("%Y.%m.%d")
 
     html = set_span(html, "f-date", today)
-    html = set_span(html, "f-total", str(total))
-    html = set_span(html, "f-total2", str(total))
+    html = set_span(html, "f-total3", str(total))
     html = set_span(html, "f-count", f"{total:,}")
     html = set_span(html, "f-basedon", str(based_on))
-    html = set_span(html, "f-basedon2", str(based_on + 1))
+    html = set_span(html, "f-basedon2", str(based_on))
     html = set_span(html, "f-basedon3", str(based_on + 1))
     html = set_span(html, "f-basedon4", str(based_on + 1))
     html = set_span(html, "f-basedon5", str(based_on + 1))
-    html = set_span(html, "f-predfile", pred_filename)
+    html = set_span(html, "f-nextround", str(based_on + 1))
 
     # predictions_<회차>_<ts>.json 의 <회차>_<ts> 부분을 그대로 리포트 파일명에 붙여 1:1로 이력 관리
     suffix = pred_filename.removeprefix("predictions_").removesuffix(".json")
