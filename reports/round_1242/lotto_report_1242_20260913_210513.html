@@ -1,0 +1,506 @@
+<title>로또 패턴 분석 리포트</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+.viz-root{
+  color-scheme: light;
+  --bg:            #f4f3ee;
+  --paper:         #fffefb;
+  --surface-2:     #ecebe3;
+  --border:        #d8d6c8;
+  --rule:          #1c1c1c;
+  --text-primary:  #1c1c1c;
+  --text-secondary:#4d4c45;
+  --text-muted:    #8a8878;
+  --navy:          #1f3a5f;
+  --navy-soft:     #e4e9ef;
+  --up:            #a5322b;
+  --down:          #1f5f4a;
+  --band:          #e4e9ef;
+  --set-1: #2a78d6; --set-2: #eb6834; --set-3: #1baf7a; --set-4: #eda100; --set-5: #e87ba4;
+  --set-6: #4a3aa7; --set-7: #008300; --set-8: #e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .viz-root{
+    color-scheme: dark;
+    --bg:            #16171a;
+    --paper:         #1d1e21;
+    --surface-2:     #232428;
+    --border:        #35363a;
+    --rule:          #e8e7e2;
+    --text-primary:  #ecebe6;
+    --text-secondary:#b7b6ac;
+    --text-muted:    #85847a;
+    --navy:          #6f8fb8;
+    --navy-soft:     #24344a;
+    --up:            #d9736b;
+    --down:          #4fa688;
+    --band:          #24344a;
+    --set-1: #3987e5; --set-2: #d95926; --set-3: #199e70; --set-4: #c98500; --set-5: #d55181;
+    --set-6: #9085e9; --set-7: #008300; --set-8: #e66767;
+  }
+}
+:root[data-theme="dark"] .viz-root{
+  color-scheme: dark;
+  --bg:            #16171a;
+  --paper:         #1d1e21;
+  --surface-2:     #232428;
+  --border:        #35363a;
+  --rule:          #e8e7e2;
+  --text-primary:  #ecebe6;
+  --text-secondary:#b7b6ac;
+  --text-muted:    #85847a;
+  --navy:          #6f8fb8;
+  --navy-soft:     #24344a;
+  --up:            #d9736b;
+  --down:          #4fa688;
+  --band:          #24344a;
+  --set-1: #3987e5; --set-2: #d95926; --set-3: #199e70; --set-4: #c98500; --set-5: #d55181;
+  --set-6: #9085e9; --set-7: #008300; --set-8: #e66767;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); }
+.viz-root {
+  font-family: "Noto Sans KR", "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--text-primary);
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.sheet {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  padding: 28px 36px 20px;
+}
+
+/* masthead */
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 3px double var(--rule);
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+}
+.firm {
+  font-family: "Noto Serif KR", serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+.firm span { color: var(--navy); }
+.doc-meta {
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* title block */
+.kicker {
+  font-size: 11px;
+  color: var(--navy);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+h1 {
+  font-family: "Noto Serif KR", serif;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+  text-wrap: balance;
+}
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: 0 0 16px;
+  max-width: 68ch;
+}
+.byline {
+  display: flex;
+  gap: 20px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.byline b { color: var(--text-primary); font-weight: 500; }
+
+/* rating strip */
+.rating-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.rating-box {
+  flex: none;
+  width: 128px;
+  background: var(--navy-soft);
+  color: var(--navy);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 8px;
+  border-right: 1px solid var(--border);
+  text-align: center;
+}
+.rating-box .r-label { font-size: 10px; color: var(--text-muted); margin-bottom: 3px; }
+.rating-box .r-value { font-family: "Noto Serif KR", serif; font-weight: 700; font-size: 15px; }
+.key-figures {
+  flex: 1;
+  min-width: 240px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+@media (max-width: 560px) {
+  .key-figures { grid-template-columns: repeat(2, 1fr); }
+  .kf:nth-child(2) { border-right: none; }
+}
+.table-scroll { overflow-x: auto; }
+.kf {
+  padding: 9px 14px;
+  border-right: 1px solid var(--border);
+}
+.kf:last-child { border-right: none; }
+.kf .kf-label { font-size: 10px; color: var(--text-muted); margin-bottom: 2px; }
+.kf .kf-value { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.summary-box {
+  background: var(--surface-2);
+  border-left: 3px solid var(--navy);
+  padding: 12px 16px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  margin-bottom: 28px;
+}
+.summary-box b { color: var(--navy); }
+
+section { margin-bottom: 30px; }
+h2 {
+  font-family: "Noto Serif KR", serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 3px;
+  padding-bottom: 6px;
+  border-bottom: 1.5px solid var(--rule);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+h2 .roman { color: var(--navy); font-size: 13px; }
+.section-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 8px 0 14px;
+  max-width: 68ch;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+thead tr { border-top: 1.5px solid var(--rule); border-bottom: 1px solid var(--rule); }
+tbody tr:last-child td { border-bottom: 1.5px solid var(--rule); }
+th, td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+}
+th {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+}
+td.num { font-variant-numeric: tabular-nums; text-align: right; color: var(--text-primary); }
+td.old { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border); }
+td.new { color: var(--down); font-weight: 700; }
+
+.combo-numbers { letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+
+svg text { fill: var(--text-secondary); font-size: 10px; font-family: inherit; }
+svg .axis-line { stroke: var(--rule); stroke-width: 1; }
+.strip-dot { fill: var(--navy); }
+.strip-row-label { fill: var(--text-muted); font-size: 10px; }
+
+.range-charts { display: flex; flex-direction: column; gap: 4px; }
+.range-track { fill: var(--surface-2); }
+.range-allowed { fill: var(--band); }
+.range-set-label { font-size: 9px; font-weight: 700; }
+.range-legend {
+  display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px;
+  font-size: 11px; color: var(--text-secondary);
+}
+.range-legend-item { display: flex; align-items: center; gap: 5px; }
+.range-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+.disclaimer {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  border-top: 3px double var(--rule);
+  padding-top: 14px;
+  margin-top: 8px;
+  line-height: 1.7;
+}
+.disclaimer p { margin: 0 0 6px; }
+</style>
+
+<div class="viz-root">
+<div class="sheet">
+
+  <div class="masthead">
+    <div class="firm">2dast <span>Data Research</span></div>
+    <div class="doc-meta">Report No. LOT-2026-01 &nbsp;·&nbsp; <span id="f-date">2026.09.13</span></div>
+  </div>
+
+  <div class="kicker">DATA ANALYSIS &nbsp;/&nbsp; 통계 분석 자료</div>
+  <h1>로또 6/45 추천 번호 스크리닝 리포트</h1>
+  <p class="subtitle">RULES.md 조건(<span id="f-total">1241</span>회차 데이터 기준 보정값)을 통과한 <span id="f-basedon2">1242</span>회차 추천 세트와 조건 충족 근거</p>
+  <div class="byline">
+    <span>작성: <b>predict.py Rules Committee</b></span>
+    <span>데이터: <b>data/draws.json (1~<span id="f-total2">1241</span>회)</b></span>
+    <span>기준회차: <b><span id="f-basedon">1241</span>회 (차기 예측)</b></span>
+    <span>분류: <b>참고자료 · 투자권유 아님</b></span>
+  </div>
+
+  <div class="rating-strip">
+    <div class="rating-box">
+      <div class="r-label">종합 판단</div>
+      <div class="r-value">참고용</div>
+    </div>
+    <div class="key-figures">
+      <div class="kf"><div class="kf-label">분석 회차</div><div class="kf-value"><span id="f-count">1,241</span>회</div></div>
+      <div class="kf"><div class="kf-label">예측 회차</div><div class="kf-value"><span id="f-basedon3">1242</span>회</div></div>
+      <div class="kf"><div class="kf-label">추천 세트</div><div class="kf-value"><span id="f-numsets">5</span>건</div></div>
+      <div class="kf"><div class="kf-label">최대 중복</div><div class="kf-value"><span id="f-maxoverlap">2</span>개 세트</div></div>
+    </div>
+  </div>
+
+  <div class="summary-box">
+    <b>Summary —</b> 이 리포트는 <span id="f-basedon5">1242</span>회차 추천 <span id="f-numsets4">5</span>세트가
+    <b>왜 이 번호들로 구성됐는지</b>를 설명하는 문서다. 로또는 회차마다 독립적으로 추첨되어 과거 데이터가
+    다음 회차의 당첨 확률 자체를 바꾸지 못하므로, 아래 내용은 "당첨 확률이 높다"는 뜻이 아니라
+    <b>RULES.md 필터 조건(Ⅳ장 참고)을 만족하도록 생성된 조합의 상세 내역</b>이다.
+  </div>
+
+  <section>
+    <h2><span class="roman">Ⅰ.</span> <span id="f-basedon4">1242</span>회차 추천 세트</h2>
+    <p class="section-desc">predictions/<span id="f-predfile">predictions_1242_20260913_210513.json</span> · 세트별 번호와 핵심 수치</p>
+    <div class="table-scroll">
+      <table class="screen-table">
+        <thead>
+          <tr>
+            <th>세트</th><th>번호</th>
+            <th style="text-align:right">합계</th>
+            <th style="text-align:right">홀수</th>
+            <th style="text-align:right">최대연속</th>
+            <th style="text-align:right">40-45구간</th>
+          </tr>
+        </thead>
+        <tbody id="pred-table-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="roman">Ⅱ.</span> 왜 이 번호들인가 — 조건별 허용범위 대비 위치</h2>
+    <p class="section-desc">회색 막대 = 조건별 허용범위(RULES.md), 점 = 각 세트의 실제 값. 점이 막대 안에 있으면 그 조건을 통과했다는 뜻이다.</p>
+    <div class="range-charts" id="range-charts"></div>
+    <div class="range-legend" id="range-legend"></div>
+  </section>
+
+  <section>
+    <h2><span class="roman">Ⅲ.</span> 번호 분포</h2>
+    <p class="section-desc">Y축의 각 행은 추천 세트 번호(1~<span id="f-numsets3">5</span>)이며, 가로 위치는 그 세트에 포함된 번호(1~45)를 나타낸다.</p>
+    <svg viewBox="0 0 680 160" width="100%" height="160" id="chart-strip"></svg>
+  </section>
+
+  <section>
+    <h2><span class="roman">Ⅳ.</span> 조건의 근거 (RULES.md)</h2>
+    <p class="section-desc">위 조건들이 왜 이 값인지: 실제 당첨 조합의 5~95 percentile / 95 percentile 기준으로 보정됐다.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>조건</th><th>기존</th><th>현재</th><th style="text-align:right">근거</th></tr></thead>
+        <tbody>
+          <tr><td>odd_even (홀수 개수)</td><td class="old">2 4</td><td class="new">1 5</td><td class="num">5~95pct</td></tr>
+          <tr><td>sum (6개 합계)</td><td class="old">100 170</td><td class="new">88 189</td><td class="num">5~95pct</td></tr>
+          <tr><td>consecutive_max (최대 연속)</td><td class="old">2</td><td class="new">3</td><td class="num">95pct</td></tr>
+          <tr><td>zone 40-45 (구간 개수)</td><td class="old">min 1 max 1</td><td class="new">min 0 max 2</td><td class="num">평균 0.80개</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="disclaimer">
+    <p><b>Disclaimer.</b> 본 자료는 로또 6/45 과거 당첨 데이터의 통계적 분포를 정리한 참고자료로, 향후 당첨 확률을 예측하거나 보장하지 않는다.
+    로또는 매 회차 독립시행이며, 과거 출현 빈도·패턴은 다음 회차의 개별 번호 당첨 확률에 어떠한 영향도 주지 않는다(도박사의 오류 참고).
+    위 표의 조건 범위는 RULES.md 필터 기준일 뿐, 당첨 가능성과는 무관하다.</p>
+  </div>
+
+</div>
+</div>
+
+<script>
+const DATA = {"predictions": [[6, 9, 15, 18, 37, 42], [4, 22, 32, 34, 39, 43], [7, 13, 23, 25, 30, 37], [9, 11, 31, 33, 40, 43], [3, 23, 24, 37, 38, 39]]};
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+function odd(combo) { return combo.filter(n => n % 2 === 1).length; }
+function maxConsecutive(combo) {
+  const s = [...combo].sort((a, b) => a - b);
+  let maxRun = 1, curRun = 1;
+  for (let i = 1; i < s.length; i++) {
+    curRun = s[i] === s[i - 1] + 1 ? curRun + 1 : 1;
+    maxRun = Math.max(maxRun, curRun);
+  }
+  return maxRun;
+}
+function zoneCount(combo, lo, hi) { return combo.filter(n => n >= lo && n <= hi).length; }
+
+(function(){
+  const body = document.getElementById("pred-table-body");
+  DATA.predictions.forEach((combo, i) => {
+    const sum = combo.reduce((a, b) => a + b, 0);
+    const o = odd(combo);
+    const run = maxConsecutive(combo);
+    const z4045 = zoneCount(combo, 40, 45);
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td class="combo-numbers">${combo.join(" · ")}</td>
+      <td class="num">${sum}</td>
+      <td class="num">${o}</td>
+      <td class="num">${run}</td>
+      <td class="num">${z4045}</td>
+    `;
+    body.appendChild(tr);
+  });
+
+  document.getElementById("f-numsets").textContent = DATA.predictions.length;
+  document.getElementById("f-numsets3").textContent = DATA.predictions.length;
+  document.getElementById("f-numsets4").textContent = DATA.predictions.length;
+
+  const counts = new Array(45).fill(0);
+  DATA.predictions.forEach(combo => combo.forEach(num => counts[num - 1]++));
+  document.getElementById("f-maxoverlap").textContent = Math.max(...counts, 1);
+})();
+
+// 왜 이 번호들인가: 조건별 허용범위(회색 막대) 대비 세트별 실제 값(점)을 보여준다.
+(function(){
+  const container = document.getElementById("range-charts");
+  const SET_COLORS = ["--set-1", "--set-2", "--set-3", "--set-4", "--set-5", "--set-6", "--set-7", "--set-8"];
+
+  const conditions = [
+    {label: "합계", axisMin: 40, axisMax: 250, allowedMin: 88, allowedMax: 189,
+      value: combo => combo.reduce((a, b) => a + b, 0)},
+    {label: "홀수 개수", axisMin: 0, axisMax: 6, allowedMin: 1, allowedMax: 5,
+      value: combo => odd(combo)},
+    {label: "최대 연속", axisMin: 1, axisMax: 6, allowedMin: 1, allowedMax: 3,
+      value: combo => maxConsecutive(combo)},
+    {label: "40-45구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 2,
+      value: combo => zoneCount(combo, 40, 45)},
+  ];
+
+  const W = 680, H = 56;
+  const padL = 108, padR = 40, trackY = 30, trackH = 14;
+
+  conditions.forEach(cond => {
+    const svg = svgEl("svg", {viewBox: `0 0 ${W} ${H}`, width: "100%", height: H});
+    const plotW = W - padL - padR;
+    const scaleX = v => padL + ((v - cond.axisMin) / (cond.axisMax - cond.axisMin)) * plotW;
+
+    const label = svgEl("text", {x: 0, y: trackY + trackH / 2 + 4, "text-anchor": "start"});
+    label.textContent = cond.label;
+    svg.appendChild(label);
+
+    svg.appendChild(svgEl("rect", {
+      x: padL, y: trackY, width: plotW, height: trackH, rx: 4, class: "range-track"
+    }));
+    const allowedX = scaleX(cond.allowedMin), allowedW = scaleX(cond.allowedMax) - scaleX(cond.allowedMin);
+    svg.appendChild(svgEl("rect", {
+      x: allowedX, y: trackY, width: allowedW, height: trackH, rx: 4, class: "range-allowed"
+    }));
+    const rangeLbl = svgEl("text", {x: (allowedX + allowedX + allowedW) / 2, y: trackY + trackH + 12, "text-anchor": "middle"});
+    rangeLbl.textContent = `허용 ${cond.allowedMin}~${cond.allowedMax}`;
+    svg.appendChild(rangeLbl);
+
+    // 같은 값을 가진 세트가 여러 개면 점을 살짝 세로로 벌려서 겹치지 않게 한다.
+    const values = DATA.predictions.map(cond.value);
+    const byValue = {};
+    values.forEach((v, i) => { (byValue[v] = byValue[v] || []).push(i); });
+
+    Object.values(byValue).forEach(idxs => {
+      idxs.forEach((setIdx, j) => {
+        const cx = scaleX(values[setIdx]);
+        const cy = trackY + trackH / 2 + (j - (idxs.length - 1) / 2) * 9;
+        const color = `var(${SET_COLORS[setIdx % SET_COLORS.length]})`;
+        svg.appendChild(svgEl("circle", {cx, cy, r: 4.5, fill: color, stroke: "var(--paper)", "stroke-width": 1.5}));
+      });
+    });
+
+    container.appendChild(svg);
+  });
+
+  const legend = document.getElementById("range-legend");
+  DATA.predictions.forEach((_, i) => {
+    const item = document.createElement("div");
+    item.className = "range-legend-item";
+    item.innerHTML = `<span class="range-legend-dot" style="background:var(${SET_COLORS[i % SET_COLORS.length]})"></span>세트 ${i + 1}`;
+    legend.appendChild(item);
+  });
+})();
+
+// 세트별 번호 분포 스트립: 1~45 축 위에 세트별로 뽑힌 번호를 점으로 표시하고,
+// Y축엔 "세트" 라벨을, 각 점에는 정확한 번호를 직접 붙인다.
+(function(){
+  const svg = document.getElementById("chart-strip");
+  const W = 680, H = 160;
+  const padL = 28, padR = 12, padT = 10, padB = 20;
+  const plotW = W - padL - padR;
+  const x = n => padL + ((n - 1) / 44) * plotW;
+  const rowH = (H - padT - padB) / DATA.predictions.length;
+
+  const axisTitle = svgEl("text", {x: 4, y: padT - 2, "text-anchor": "start"});
+  axisTitle.setAttribute("class", "strip-row-label");
+  axisTitle.textContent = "세트";
+  svg.appendChild(axisTitle);
+
+  svg.appendChild(svgEl("line", {x1: padL, y1: H - padB, x2: W - padR, y2: H - padB, class: "axis-line"}));
+  [1, 10, 20, 30, 40, 45].forEach(n => {
+    const t = svgEl("text", {x: x(n), y: H - padB + 13, "text-anchor": "middle"});
+    t.textContent = n;
+    svg.appendChild(t);
+  });
+
+  DATA.predictions.forEach((combo, i) => {
+    const cy = padT + rowH * i + rowH / 2;
+    const lbl = svgEl("text", {x: padL - 6, y: cy + 3, "text-anchor": "end"});
+    lbl.setAttribute("class", "strip-row-label");
+    lbl.textContent = `${i + 1}`;
+    svg.appendChild(lbl);
+    combo.forEach(n => {
+      svg.appendChild(svgEl("circle", {cx: x(n), cy, r: 3.5, class: "strip-dot"}));
+      const numLbl = svgEl("text", {x: x(n), y: cy - 6, "text-anchor": "middle"});
+      numLbl.setAttribute("class", "value-label");
+      numLbl.textContent = n;
+      svg.appendChild(numLbl);
+    });
+  });
+})();
+
+</script>
