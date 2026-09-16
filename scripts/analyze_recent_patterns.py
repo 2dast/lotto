@@ -128,7 +128,7 @@ def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")  # Windows 콘솔 cp949 깨짐 방지
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--window", type=int, default=20, help="'최근'으로 볼 회차 수 (기본 20)")
+    parser.add_argument("--window", type=int, default=30, help="'최근'으로 볼 회차 수 (기본 30)")
     args = parser.parse_args()
 
     draws = load_draws()

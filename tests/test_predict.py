@@ -15,10 +15,10 @@ def test_odd_even_ratio_rejects_all_even():
     assert not passes_filters(combo, FILTERS)
 
 
-def test_40s_zone_allows_up_to_two():
-    # 40번대 없음 -> 허용 (0~2개 허용)
+def test_40s_zone_requires_one_to_two():
+    # 40번대 없음 -> 거부 (최소 1개 필수)
     combo_no_40s = [3, 10, 20, 21, 29, 34]
-    assert passes_filters(combo_no_40s, FILTERS)
+    assert not passes_filters(combo_no_40s, FILTERS)
 
     # 40번대 2개 -> 허용
     combo_two_40s = [40, 41, 1, 10, 20, 30]
