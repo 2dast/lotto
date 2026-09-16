@@ -1,5 +1,4 @@
 """RULES.md의 조건과 data/draws.json 기반으로 예측 번호 세트를 생성한다."""
-import argparse
 import datetime as dt
 import json
 import random
@@ -8,6 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 RULES_PATH = ROOT / "RULES.md"
+RULES_2_PATH = ROOT / "RULES_2.md"
 DATA_PATH = ROOT / "data" / "draws.json"
 OUTPUT_DIR = ROOT / "predictions"
 
@@ -203,31 +203,38 @@ def generate_predictions(rules: dict, scores: dict[int, float]) -> list[list[int
     return predictions
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--rules", type=Path, default=RULES_PATH, help="사용할 규칙 파일 (기본 RULES.md)")
-    parser.add_argument("--out-prefix", default="predictions", help="출력 파일명 접두사 (기본 predictions)")
-    args = parser.parse_args()
-
-    rules = load_rules(args.rules)
-    draws = load_draws()
+def generate_option(rules_path: Path, draws: list[dict]) -> list[list[int]] | None:
+    """rules_path가 없으면 None(해당 안은 이번 회차에 생성하지 않음)."""
+    if not rules_path.exists():
+        return None
+    rules = load_rules(rules_path)
     scores = score_numbers(draws, rules)
-    predictions = generate_predictions(rules, scores)
+    return generate_predictions(rules, scores)
+
+
+def main() -> None:
+    draws = load_draws()
+    option1 = generate_option(RULES_PATH, draws)
+    if option1 is None:
+        raise FileNotFoundError(f"{RULES_PATH} 파일이 없습니다")
+    option2 = generate_option(RULES_2_PATH, draws)
 
     last_drw_no = max((d["drwNo"] for d in draws), default=0)
     now = dt.datetime.now(KST)
     output = {
         "based_on_drwNo": last_drw_no,
         "generated_at": now.isoformat(timespec="seconds"),
-        "predictions": predictions,
+        "option1": {"predictions": option1},
+        "option2": {"predictions": option2} if option2 is not None else None,
     }
 
     next_draw = last_drw_no + 1
     round_dir = OUTPUT_DIR / f"round_{next_draw}"
     round_dir.mkdir(parents=True, exist_ok=True)
-    output_path = round_dir / f"{args.out_prefix}_{next_draw}_{now.strftime('%Y%m%d_%H%M%S')}.json"
+    output_path = round_dir / f"predictions_{next_draw}_{now.strftime('%Y%m%d_%H%M%S')}.json"
     output_path.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"{len(predictions)}개 세트 생성됨 -> {output_path}")
+    option2_note = f", 2안 {len(option2)}개" if option2 is not None else " (2안 없음)"
+    print(f"1안 {len(option1)}개{option2_note} 세트 생성됨 -> {output_path}")
 
 
 if __name__ == "__main__":

@@ -30,6 +30,13 @@ def number_ball(n: int, hit: bool = False) -> str:
     return f'<span class="{cls}">{n}</span>'
 
 
+def option1_predictions(data: dict) -> list[list[int]]:
+    """predict.py가 예전엔 {"predictions": [...]} 형태(1안만)로 저장했다 — 그 시절 파일도 계속 읽을 수 있게 둘 다 지원."""
+    if "option1" in data:
+        return data["option1"]["predictions"]
+    return data["predictions"]
+
+
 def load_latest_predictions() -> tuple[str, dict]:
     files = list(PREDICTIONS_DIR.glob("round_*/predictions_*.json"))
     # 파일명의 회차 번호가 zero-padding 없이 들어가 이름순 정렬은 신뢰할 수 없다.
@@ -40,7 +47,7 @@ def load_latest_predictions() -> tuple[str, dict]:
 
 
 def load_all_predictions() -> list[dict]:
-    """predictions/ 안의 모든 예측 파일을 회차 선택 드롭다운용으로 모은다."""
+    """predictions/ 안의 모든 예측 파일을 회차 선택 드롭다운용으로 모은다. (대시보드는 1안만 보여준다)"""
     entries = []
     for path in sorted(PREDICTIONS_DIR.glob("round_*/predictions_*.json"), key=lambda p: p.name):
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -49,7 +56,7 @@ def load_all_predictions() -> list[dict]:
             "based_on_drwNo": data["based_on_drwNo"],
             "next_draw": data["based_on_drwNo"] + 1,
             "generated_at": data["generated_at"],
-            "predictions": data["predictions"],
+            "predictions": option1_predictions(data),
         })
     entries.sort(key=lambda e: e["generated_at"], reverse=True)
     return entries

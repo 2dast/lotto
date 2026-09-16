@@ -27,8 +27,8 @@ def set_span(html: str, span_id: str, value: str) -> str:
     return new_html
 
 
-def load_latest_predictions(glob_pattern: str = "round_*/predictions_*.json") -> tuple[str, dict] | None:
-    files = list(PREDICTIONS_DIR.glob(glob_pattern))
+def load_latest_predictions() -> tuple[str, dict] | None:
+    files = list(PREDICTIONS_DIR.glob("round_*/predictions_*.json"))
     if not files:
         return None
     # 파일명에 회차 번호가 zero-padding 없이 들어가 있어 이름순 정렬은 신뢰할 수 없다
@@ -42,20 +42,19 @@ def main() -> None:
     draws = json.loads(DATA_PATH.read_text(encoding="utf-8"))
     total = len(draws)
 
-    option1 = load_latest_predictions("round_*/predictions_*.json")
-    if option1 is None:
+    latest = load_latest_predictions()
+    if latest is None:
         raise FileNotFoundError(
             "predictions/round_<회차>/predictions_*.json이 없습니다. scripts/predict.py를 먼저 실행하세요"
         )
-    pred_filename, pred_data = option1
+    pred_filename, pred_data = latest
     based_on = pred_data["based_on_drwNo"]
 
-    # 2안(predictions2_*.json)은 아직 회차별로 없을 수 있으므로 있으면만 채우고, 화면 노출은 다음 단계에서.
-    option2 = load_latest_predictions("round_*/predictions2_*.json")
-    data_obj = {
-        "option1": {"predictions": pred_data["predictions"]},
-        "option2": {"predictions": option2[1]["predictions"]} if option2 else None,
-    }
+    # predict.py가 예전엔 {"predictions": [...]} 형태(1안만)로 저장했다 — 그 시절 파일도 계속 읽을 수 있게 둘 다 지원.
+    if "option1" in pred_data:
+        data_obj = {"option1": pred_data["option1"], "option2": pred_data.get("option2")}
+    else:
+        data_obj = {"option1": {"predictions": pred_data["predictions"]}, "option2": None}
 
     html = TEMPLATE_PATH.read_text(encoding="utf-8")
     html = re.sub(
