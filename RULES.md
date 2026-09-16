@@ -30,6 +30,7 @@ freq_recent_window 20      # "최근"의 기준 = 최근 20회차
 | `freq_all_weight` | `freq_all_weight <0~1>` | 전체 출현 빈도 가중치 |
 | `freq_recent_weight` | `freq_recent_weight <0~1>` | 최근 출현 빈도 가중치 |
 | `freq_recent_window` | `freq_recent_window <n>` | "최근"으로 볼 회차 수 |
+| `freq_mode` | `freq_mode hot\|cold` | `hot`(기본값)=최근 자주 나온 번호 우대, `cold`=최근 안 나온 번호 우대 |
 | `exclude` | `exclude <번호> [번호...]` | 예측에서 항상 제외할 번호 |
 | `include` | `include <번호> [번호...]` | 예측에 항상 포함할 번호 |
 

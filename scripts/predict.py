@@ -1,4 +1,5 @@
 """RULES.md의 조건과 data/draws.json 기반으로 예측 번호 세트를 생성한다."""
+import argparse
 import datetime as dt
 import json
 import random
@@ -19,7 +20,7 @@ DEFAULT_ZONES = [(1, 9), (10, 19), (20, 29), (30, 39), (40, 45)]
 def _parse_rule_lines(lines: list[str]) -> dict:
     zones = []
     rules = {
-        "frequency": {"all_time_weight": 0.5, "recent_weight": 0.5, "recent_window": 20},
+        "frequency": {"all_time_weight": 0.5, "recent_weight": 0.5, "recent_window": 20, "mode": "hot"},
         "pattern_filters": {
             "odd_even_ratio": [0, 6],
             "max_consecutive": 6,
@@ -59,6 +60,10 @@ def _parse_rule_lines(lines: list[str]) -> dict:
             rules["frequency"]["recent_weight"] = float(tokens[1])
         elif keyword == "freq_recent_window":
             rules["frequency"]["recent_window"] = int(tokens[1])
+        elif keyword == "freq_mode":
+            if tokens[1] not in ("hot", "cold"):
+                raise ValueError(f"freq_mode는 hot/cold만 허용: {tokens[1]!r}")
+            rules["frequency"]["mode"] = tokens[1]
         elif keyword == "exclude":
             rules["exclude_numbers"].extend(int(t) for t in tokens[1:])
         elif keyword == "include":
@@ -90,6 +95,7 @@ def score_numbers(draws: list[dict], rules: dict) -> dict[int, float]:
     all_time_weight = freq_cfg["all_time_weight"]
     recent_weight = freq_cfg["recent_weight"]
     recent_window = freq_cfg["recent_window"]
+    mode = freq_cfg.get("mode", "hot")
 
     all_time_count = {n: 0 for n in ALL_NUMBERS}
     recent_count = {n: 0 for n in ALL_NUMBERS}
@@ -105,9 +111,16 @@ def score_numbers(draws: list[dict], rules: dict) -> dict[int, float]:
     max_all = max(all_time_count.values(), default=0) or 1
     max_recent = max(recent_count.values(), default=0) or 1
 
+    all_time_norm = {n: all_time_count[n] / max_all for n in ALL_NUMBERS}
+    recent_norm = {n: recent_count[n] / max_recent for n in ALL_NUMBERS}
+
+    if mode == "cold":
+        # "많이 나온 번호"가 아니라 "적게 나온 번호"를 우대 (1안과 반대 방향 베팅)
+        all_time_norm = {n: 1 - v for n, v in all_time_norm.items()}
+        recent_norm = {n: 1 - v for n, v in recent_norm.items()}
+
     return {
-        n: all_time_weight * (all_time_count[n] / max_all)
-        + recent_weight * (recent_count[n] / max_recent)
+        n: all_time_weight * all_time_norm[n] + recent_weight * recent_norm[n]
         for n in ALL_NUMBERS
     }
 
@@ -191,7 +204,12 @@ def generate_predictions(rules: dict, scores: dict[int, float]) -> list[list[int
 
 
 def main() -> None:
-    rules = load_rules()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--rules", type=Path, default=RULES_PATH, help="사용할 규칙 파일 (기본 RULES.md)")
+    parser.add_argument("--out-prefix", default="predictions", help="출력 파일명 접두사 (기본 predictions)")
+    args = parser.parse_args()
+
+    rules = load_rules(args.rules)
     draws = load_draws()
     scores = score_numbers(draws, rules)
     predictions = generate_predictions(rules, scores)
@@ -207,7 +225,7 @@ def main() -> None:
     next_draw = last_drw_no + 1
     round_dir = OUTPUT_DIR / f"round_{next_draw}"
     round_dir.mkdir(parents=True, exist_ok=True)
-    output_path = round_dir / f"predictions_{next_draw}_{now.strftime('%Y%m%d_%H%M%S')}.json"
+    output_path = round_dir / f"{args.out_prefix}_{next_draw}_{now.strftime('%Y%m%d_%H%M%S')}.json"
     output_path.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"{len(predictions)}개 세트 생성됨 -> {output_path}")
 
