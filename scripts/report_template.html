@@ -364,7 +364,7 @@ svg .axis-line { stroke: var(--rule); stroke-width: 1; }
 </div>
 
 <script>
-const DATA = {"predictions": [[3,12,19,24,33,41],[5,14,21,28,32,44],[2,17,23,29,36,40],[8,11,26,31,38,42],[6,15,22,27,34,45]]};
+const DATA = {"option1": {"predictions": [[3,12,19,24,33,41],[5,14,21,28,32,44],[2,17,23,29,36,40],[8,11,26,31,38,42],[6,15,22,27,34,45]]}, "option2": null};
 
 function svgEl(tag, attrs) {
   const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
@@ -393,7 +393,7 @@ function officialColor(n) {
 
 (function(){
   const body = document.getElementById("pred-table-body");
-  DATA.predictions.forEach((combo, i) => {
+  DATA.option1.predictions.forEach((combo, i) => {
     const sum = combo.reduce((a, b) => a + b, 0);
     const o = odd(combo);
     const run = maxConsecutive(combo);
@@ -413,11 +413,11 @@ function officialColor(n) {
     body.appendChild(tr);
   });
 
-  document.getElementById("f-numsets").textContent = DATA.predictions.length;
-  document.getElementById("f-numsets4").textContent = DATA.predictions.length;
+  document.getElementById("f-numsets").textContent = DATA.option1.predictions.length;
+  document.getElementById("f-numsets4").textContent = DATA.option1.predictions.length;
 
   const counts = new Array(45).fill(0);
-  DATA.predictions.forEach(combo => combo.forEach(num => counts[num - 1]++));
+  DATA.option1.predictions.forEach(combo => combo.forEach(num => counts[num - 1]++));
   document.getElementById("f-maxoverlap").textContent = Math.max(...counts, 1);
 })();
 
@@ -469,7 +469,7 @@ function officialColor(n) {
     svg.appendChild(rangeLbl);
 
     // 같은 값을 가진 세트가 여러 개면 점을 살짝 세로로 벌려서 겹치지 않게 한다.
-    const values = DATA.predictions.map(cond.value);
+    const values = DATA.option1.predictions.map(cond.value);
     const byValue = {};
     values.forEach((v, i) => { (byValue[v] = byValue[v] || []).push(i); });
 
@@ -486,7 +486,7 @@ function officialColor(n) {
   });
 
   const legend = document.getElementById("range-legend");
-  DATA.predictions.forEach((_, i) => {
+  DATA.option1.predictions.forEach((_, i) => {
     const item = document.createElement("div");
     item.className = "range-legend-item";
     item.innerHTML = `<span class="range-legend-dot" style="background:var(${SET_COLORS[i % SET_COLORS.length]})"></span>세트 ${i + 1}`;
@@ -504,7 +504,7 @@ function officialColor(n) {
   const baseY = H - padB;
 
   const counts = new Array(46).fill(0);
-  DATA.predictions.forEach(combo => combo.forEach(n => counts[n]++));
+  DATA.option1.predictions.forEach(combo => combo.forEach(n => counts[n]++));
   const maxCount = Math.max(...counts.slice(1), 1);
   const plotH = baseY - padT;
   const step = plotH / maxCount;
