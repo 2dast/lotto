@@ -21,6 +21,13 @@ def find_latest_predictions_file(dir_path: Path = PREDICTIONS_DIR) -> Path:
     return max(candidates, key=lambda c: c[0])[1]
 
 
+def option1_predictions(data: dict) -> list[list[int]]:
+    """predict.py가 예전엔 {"predictions": [...]} 형태(1안만)로 저장했다 — 그 시절 파일도 계속 읽을 수 있게 둘 다 지원."""
+    if "option1" in data:
+        return data["option1"]["predictions"]
+    return data["predictions"]
+
+
 def build_block(data: dict) -> str:
     lines = [
         START_MARKER,
@@ -28,7 +35,7 @@ def build_block(data: dict) -> str:
         f"- 생성 시각: {data['generated_at']}",
         "",
     ]
-    for i, combo in enumerate(data["predictions"], start=1):
+    for i, combo in enumerate(option1_predictions(data), start=1):
         numbers = ", ".join(str(n) for n in combo)
         lines.append(f"{i}. {numbers}")
     lines.append(END_MARKER)
