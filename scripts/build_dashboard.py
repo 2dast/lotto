@@ -37,6 +37,12 @@ def option1_predictions(data: dict) -> list[list[int]]:
     return data["predictions"]
 
 
+def option2_predictions(data: dict) -> list[list[int]] | None:
+    """2안이 없던 시절 파일, 혹은 2안 생성이 스킵된 회차는 None."""
+    option2 = data.get("option2")
+    return option2["predictions"] if option2 else None
+
+
 def load_latest_predictions() -> tuple[str, dict]:
     files = list(PREDICTIONS_DIR.glob("round_*/predictions_*.json"))
     # 파일명의 회차 번호가 zero-padding 없이 들어가 이름순 정렬은 신뢰할 수 없다.
@@ -57,6 +63,7 @@ def load_all_predictions() -> list[dict]:
             "next_draw": data["based_on_drwNo"] + 1,
             "generated_at": data["generated_at"],
             "predictions": option1_predictions(data),
+            "option2": option2_predictions(data),
         })
     entries.sort(key=lambda e: e["generated_at"], reverse=True)
     return entries
@@ -153,10 +160,34 @@ def render_summary(
       ).join('');
     }}
 
+    const pred2Card = document.getElementById('pred2-card');
+    const pred2List = document.getElementById('pred2-list');
+    const pred2Summary = document.getElementById('pred2-summary');
+    const pred2Title = document.getElementById('pred2-title');
+
+    function renderPredList(listEl, predictions, actualNumbers) {{
+      if (actualNumbers) {{
+        const hitSet = new Set(actualNumbers);
+        listEl.innerHTML = predictions.map((combo, i) => `
+          <li class="pred-row">
+            <span class="set-idx">${{i + 1}}</span>
+            <span class="set-nums">${{combo.map(n => ballHtml(n, hitSet.has(n))).join(' ')}}</span>
+          </li>
+        `).join('');
+      }} else {{
+        listEl.innerHTML = predictions.map((combo, i) => `
+          <li class="pred-row">
+            <span class="set-idx">${{i + 1}}</span>
+            <span class="set-nums">${{combo.map(n => ballHtml(n, false)).join(' ')}}</span>
+          </li>
+        `).join('');
+      }}
+    }}
+
     function renderPrediction(round, filename) {{
       const entry = PREDICTIONS.find(p => p.next_draw === Number(round) && p.file === filename);
       if (!entry) return;
-      predTitle.textContent = `${{entry.next_draw}}회차 예측`;
+      predTitle.textContent = `${{entry.next_draw}}회차 예측 (1안)`;
 
       const actualNumbers = DRAWS_BY_NO[entry.next_draw];
       if (actualNumbers) {{
@@ -164,21 +195,25 @@ def render_summary(
         const best = Math.max(...hits);
         const badges = hits.map(h => `<span class="accuracy-badge${{h === 0 ? ' dim' : ''}}">${{h}}개</span>`).join(' ');
         predSummary.innerHTML = `적중 ${{badges}} · 최고 ${{best}}개`;
-        const hitSet = new Set(actualNumbers);
-        predList.innerHTML = entry.predictions.map((combo, i) => `
-          <li class="pred-row">
-            <span class="set-idx">${{i + 1}}</span>
-            <span class="set-nums">${{combo.map(n => ballHtml(n, hitSet.has(n))).join(' ')}}</span>
-          </li>
-        `).join('');
       }} else {{
         predSummary.textContent = '아직 추첨 전입니다 — 결과 발표 후 적중 이력이 집계됩니다.';
-        predList.innerHTML = entry.predictions.map((combo, i) => `
-          <li class="pred-row">
-            <span class="set-idx">${{i + 1}}</span>
-            <span class="set-nums">${{combo.map(n => ballHtml(n, false)).join(' ')}}</span>
-          </li>
-        `).join('');
+      }}
+      renderPredList(predList, entry.predictions, actualNumbers);
+
+      if (entry.option2) {{
+        pred2Card.hidden = false;
+        pred2Title.textContent = `${{entry.next_draw}}회차 예측 (2안)`;
+        if (actualNumbers) {{
+          const hits2 = computeHits(entry.option2, actualNumbers);
+          const best2 = Math.max(...hits2);
+          const badges2 = hits2.map(h => `<span class="accuracy-badge${{h === 0 ? ' dim' : ''}}">${{h}}개</span>`).join(' ');
+          pred2Summary.innerHTML = `적중 ${{badges2}} · 최고 ${{best2}}개`;
+        }} else {{
+          pred2Summary.textContent = '아직 추첨 전입니다 — 결과 발표 후 적중 이력이 집계됩니다.';
+        }}
+        renderPredList(pred2List, entry.option2, actualNumbers);
+      }} else {{
+        pred2Card.hidden = true;
       }}
     }}
 
@@ -208,6 +243,12 @@ def render_summary(
         </div>
         <p class="body-1" id="pred-summary" style="margin:0 0 10px"></p>
         <ul class="pred-list" id="pred-list"></ul>
+      </section>
+
+      <section class="card" id="pred2-card" hidden>
+        <h2 class="h3" id="pred2-title">2안 예측</h2>
+        <p class="body-1" id="pred2-summary" style="margin:0 0 10px"></p>
+        <ul class="pred-list" id="pred2-list"></ul>
       </section>
 
       <section class="card">

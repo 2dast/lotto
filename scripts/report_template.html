@@ -354,6 +354,62 @@ svg .axis-line { stroke: var(--rule); stroke-width: 1; }
     <p class="chart-note">※ 1~<span id="f-total3">1240</span>회차 실제 당첨 데이터를 percentile 분석해 고정한 값이다. 회차가 새로 추가돼도 이 값 자체는 재보정 전까지 그대로 유지된다.</p>
   </section>
 
+  <div id="option2-block" hidden>
+    <div class="kicker" style="margin-top:6px">DATA ANALYSIS &nbsp;/&nbsp; 2안 — 1안과 반대 방향 베팅</div>
+    <h1 style="font-size:19px">2안 추천 세트</h1>
+    <p class="subtitle">RULES_2.md 기준. 1안과 상관관계를 낮추기 위해 40-45구간 배제·1-9구간 강제·콜드넘버 우대 조건을 적용한 별도 세트.</p>
+
+    <section>
+      <h2><span class="roman">Ⅰ.</span> 2안 추천 세트</h2>
+      <p class="section-desc">세트별 번호와 핵심 수치</p>
+      <div class="table-scroll">
+        <table class="screen-table">
+          <thead>
+            <tr>
+              <th>세트</th><th>번호</th>
+              <th style="text-align:right">합계</th>
+              <th style="text-align:right">홀수</th>
+              <th style="text-align:right">최대연속</th>
+              <th style="text-align:right">구간분포</th>
+            </tr>
+          </thead>
+          <tbody id="pred-table-body2"></tbody>
+        </table>
+      </div>
+      <p class="chart-note">※ 구간분포는 1-9·10-19·20-29·30-39·40-45 순서로 각 구간에 포함된 번호 개수다.</p>
+    </section>
+
+    <section>
+      <h2><span class="roman">Ⅱ.</span> 왜 이 번호들인가 — 조건별 허용범위 대비 위치</h2>
+      <p class="section-desc">조건별 허용범위 대비 각 세트의 실제 값</p>
+      <div class="range-charts" id="range-charts2"></div>
+      <div class="range-legend" id="range-legend2"></div>
+      <p class="chart-note">※ 회색 막대 = 조건별 허용범위, 점 = 각 세트의 실제 값. 점이 막대 안에 있으면 그 조건을 통과했다는 뜻이다.</p>
+    </section>
+
+    <section>
+      <h2><span class="roman">Ⅲ.</span> 번호 분포</h2>
+      <p class="section-desc">번호별 등장 횟수</p>
+      <svg viewBox="0 0 680 120" width="100%" height="120" id="chart-strip2"></svg>
+      <p class="chart-note">※ 가로축은 번호(1~45), 세로축은 2안 추천 세트 중 그 번호가 뽑힌 횟수다. 색상은 공식 번호 구간 색상을 따른다.</p>
+    </section>
+
+    <section>
+      <h2><span class="roman">Ⅳ.</span> 조건의 근거</h2>
+      <p class="section-desc">1안과 다른 조건만 표시 — 그 외(홀짝·합계·최대연속·중간구간)는 1안과 동일</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>조건</th><th>값</th><th style="text-align:right">비고</th></tr></thead>
+          <tbody>
+            <tr><td>zone 1-9 (구간 개수)</td><td class="new">min 1 max 3</td><td class="num">1안 대비 강제 포함</td></tr>
+            <tr><td>zone 40-45 (구간 개수)</td><td class="new">min 0 max 0</td><td class="num">1안 대비 완전 배제</td></tr>
+            <tr><td>freq_mode</td><td class="new">cold</td><td class="num">1안(hot)과 반대로 콜드넘버 우대</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
   <div class="disclaimer">
     <p><b>Disclaimer.</b> 본 자료는 로또 6/45 과거 당첨 데이터의 통계적 분포를 정리한 참고자료로, 향후 당첨 확률을 예측하거나 보장하지 않는다.
     로또는 매 회차 독립시행이며, 과거 출현 빈도·패턴은 다음 회차의 개별 번호 당첨 확률에 어떠한 영향도 주지 않는다(도박사의 오류 참고).
@@ -391,9 +447,9 @@ function officialColor(n) {
   return "#b0d840";
 }
 
-(function(){
-  const body = document.getElementById("pred-table-body");
-  DATA.option1.predictions.forEach((combo, i) => {
+function renderPredTable(predictions, bodyId) {
+  const body = document.getElementById(bodyId);
+  predictions.forEach((combo, i) => {
     const sum = combo.reduce((a, b) => a + b, 0);
     const o = odd(combo);
     const run = maxConsecutive(combo);
@@ -412,7 +468,10 @@ function officialColor(n) {
     `;
     body.appendChild(tr);
   });
+}
 
+(function(){
+  renderPredTable(DATA.option1.predictions, "pred-table-body");
   document.getElementById("f-numsets").textContent = DATA.option1.predictions.length;
   document.getElementById("f-numsets4").textContent = DATA.option1.predictions.length;
 
@@ -421,29 +480,14 @@ function officialColor(n) {
   document.getElementById("f-maxoverlap").textContent = Math.max(...counts, 1);
 })();
 
-// 왜 이 번호들인가: 조건별 허용범위(회색 막대) 대비 세트별 실제 값(점)을 보여준다.
-(function(){
-  const container = document.getElementById("range-charts");
-  const SET_COLORS = ["--set-1", "--set-2", "--set-3", "--set-4", "--set-5", "--set-6", "--set-7", "--set-8"];
+if (DATA.option2) {
+  renderPredTable(DATA.option2.predictions, "pred-table-body2");
+}
 
-  const conditions = [
-    {label: "합계", axisMin: 40, axisMax: 250, allowedMin: 88, allowedMax: 189,
-      value: combo => combo.reduce((a, b) => a + b, 0)},
-    {label: "홀수 개수", axisMin: 0, axisMax: 6, allowedMin: 1, allowedMax: 5,
-      value: combo => odd(combo)},
-    {label: "최대 연속", axisMin: 1, axisMax: 6, allowedMin: 1, allowedMax: 3,
-      value: combo => maxConsecutive(combo)},
-    {label: "1-9구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
-      value: combo => zoneCount(combo, 1, 9)},
-    {label: "10-19구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
-      value: combo => zoneCount(combo, 10, 19)},
-    {label: "20-29구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
-      value: combo => zoneCount(combo, 20, 29)},
-    {label: "30-39구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
-      value: combo => zoneCount(combo, 30, 39)},
-    {label: "40-45구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 2,
-      value: combo => zoneCount(combo, 40, 45)},
-  ];
+// 왜 이 번호들인가: 조건별 허용범위(회색 막대) 대비 세트별 실제 값(점)을 보여준다.
+function renderRangeCharts(predictions, conditions, chartsId, legendId) {
+  const container = document.getElementById(chartsId);
+  const SET_COLORS = ["--set-1", "--set-2", "--set-3", "--set-4", "--set-5", "--set-6", "--set-7", "--set-8"];
 
   const W = 680, H = 62;
   const padL = 108, padR = 40, trackY = 16, trackH = 14;
@@ -469,7 +513,7 @@ function officialColor(n) {
     svg.appendChild(rangeLbl);
 
     // 같은 값을 가진 세트가 여러 개면 점을 살짝 세로로 벌려서 겹치지 않게 한다.
-    const values = DATA.option1.predictions.map(cond.value);
+    const values = predictions.map(cond.value);
     const byValue = {};
     values.forEach((v, i) => { (byValue[v] = byValue[v] || []).push(i); });
 
@@ -485,18 +529,61 @@ function officialColor(n) {
     container.appendChild(svg);
   });
 
-  const legend = document.getElementById("range-legend");
-  DATA.option1.predictions.forEach((_, i) => {
+  const legend = document.getElementById(legendId);
+  predictions.forEach((_, i) => {
     const item = document.createElement("div");
     item.className = "range-legend-item";
     item.innerHTML = `<span class="range-legend-dot" style="background:var(${SET_COLORS[i % SET_COLORS.length]})"></span>세트 ${i + 1}`;
     legend.appendChild(item);
   });
-})();
+}
+
+const CONDITIONS_OPTION1 = [
+  {label: "합계", axisMin: 40, axisMax: 250, allowedMin: 88, allowedMax: 189,
+    value: combo => combo.reduce((a, b) => a + b, 0)},
+  {label: "홀수 개수", axisMin: 0, axisMax: 6, allowedMin: 1, allowedMax: 5,
+    value: combo => odd(combo)},
+  {label: "최대 연속", axisMin: 1, axisMax: 6, allowedMin: 1, allowedMax: 3,
+    value: combo => maxConsecutive(combo)},
+  {label: "1-9구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
+    value: combo => zoneCount(combo, 1, 9)},
+  {label: "10-19구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
+    value: combo => zoneCount(combo, 10, 19)},
+  {label: "20-29구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
+    value: combo => zoneCount(combo, 20, 29)},
+  {label: "30-39구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
+    value: combo => zoneCount(combo, 30, 39)},
+  {label: "40-45구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 2,
+    value: combo => zoneCount(combo, 40, 45)},
+];
+
+const CONDITIONS_OPTION2 = [
+  {label: "합계", axisMin: 40, axisMax: 250, allowedMin: 88, allowedMax: 189,
+    value: combo => combo.reduce((a, b) => a + b, 0)},
+  {label: "홀수 개수", axisMin: 0, axisMax: 6, allowedMin: 1, allowedMax: 5,
+    value: combo => odd(combo)},
+  {label: "최대 연속", axisMin: 1, axisMax: 6, allowedMin: 1, allowedMax: 3,
+    value: combo => maxConsecutive(combo)},
+  {label: "1-9구간 개수", axisMin: 0, axisMax: 6, allowedMin: 1, allowedMax: 3,
+    value: combo => zoneCount(combo, 1, 9)},
+  {label: "10-19구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
+    value: combo => zoneCount(combo, 10, 19)},
+  {label: "20-29구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
+    value: combo => zoneCount(combo, 20, 29)},
+  {label: "30-39구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
+    value: combo => zoneCount(combo, 30, 39)},
+  {label: "40-45구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 0,
+    value: combo => zoneCount(combo, 40, 45)},
+];
+
+renderRangeCharts(DATA.option1.predictions, CONDITIONS_OPTION1, "range-charts", "range-legend");
+if (DATA.option2) {
+  renderRangeCharts(DATA.option2.predictions, CONDITIONS_OPTION2, "range-charts2", "range-legend2");
+}
 
 // 번호 분포: X축 = 번호(1~45), Y축 = 등장 횟수. 횟수만큼 점을 쌓아올리는 도트 플롯 (공식 구간 색상).
-(function(){
-  const svg = document.getElementById("chart-strip");
+function renderDistribution(predictions, svgId) {
+  const svg = document.getElementById(svgId);
   const W = 680, H = 120;
   const padL = 24, padR = 12, padT = 10, padB = 20;
   const plotW = W - padL - padR;
@@ -504,7 +591,7 @@ function officialColor(n) {
   const baseY = H - padB;
 
   const counts = new Array(46).fill(0);
-  DATA.option1.predictions.forEach(combo => combo.forEach(n => counts[n]++));
+  predictions.forEach(combo => combo.forEach(n => counts[n]++));
   const maxCount = Math.max(...counts.slice(1), 1);
   const plotH = baseY - padT;
   const step = plotH / maxCount;
@@ -542,6 +629,12 @@ function officialColor(n) {
       svg.appendChild(svgEl("circle", {cx: x(n), cy, r, fill: officialColor(n), stroke: "var(--paper)", "stroke-width": 1.5}));
     }
   }
-})();
+}
+
+renderDistribution(DATA.option1.predictions, "chart-strip");
+if (DATA.option2) {
+  renderDistribution(DATA.option2.predictions, "chart-strip2");
+  document.getElementById("option2-block").hidden = false;
+}
 
 </script>
