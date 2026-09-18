@@ -69,8 +69,6 @@ const nowKst = new Date(Date.now() + KST_OFFSET_MS);
 const pad = (n: number) => String(n).padStart(2, "0");
 const generatedAtLabel = `${nowKst.getUTCFullYear()}-${pad(nowKst.getUTCMonth() + 1)}-${pad(nowKst.getUTCDate())} ${pad(nowKst.getUTCHours())}:${pad(nowKst.getUTCMinutes())}`;
 
-const nextDrawLabel = `${nextDraw}회차 예측 기준`;
-
 const drawsByNo: Record<number, number[]> = {};
 for (const d of draws) drawsByNo[d.drwNo] = d.numbers;
 
@@ -172,8 +170,8 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
       height: 56px; flex: none; display: flex; align-items: center; gap: 12px; justify-content: space-between;
       padding: 0 20px; background: var(--white); border-bottom: 1px solid var(--border-secondary);
     }
-    .top-nav .title-1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
-    .top-nav .caption { margin: 0; }
+    .top-nav .title-1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; flex: none; }
+    .nav-select-row { flex: 1; justify-content: flex-end; min-width: 0; }
     .menu-btn {
       display: none; flex: none; width: 36px; height: 36px; border: none; background: none;
       border-radius: 12px; cursor: pointer; align-items: center; justify-content: center;
@@ -200,7 +198,8 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
 
     @media (max-width: 768px) {
       .menu-btn { display: inline-flex; }
-      .top-nav .caption { display: none; }
+      .top-nav .title-1 { display: none; }
+      .nav-select-row select { max-width: 40vw; }
       .layout { position: relative; overflow: hidden; }
       .sidebar {
         position: fixed; top: 56px; bottom: 0; left: 0; z-index: 20; width: 78vw; max-width: 320px;
@@ -306,7 +305,14 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
     </button>
     <span class="title-1">로또 대시보드</span>
-    <span class="caption" style="flex:1">{nextDrawLabel}</span>
+    <div class="select-row nav-select-row">
+      <select id="round-select" aria-label="예측 회차 선택">
+        {rounds.map((r) => (
+          <option value={r} selected={r === nextDraw}>{r}회차</option>
+        ))}
+      </select>
+      <select id="file-select" aria-label="예측 파일 선택"></select>
+    </div>
     <button class="theme-btn" id="theme-btn" type="button" aria-label="다크 모드 전환">
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
       <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
@@ -343,14 +349,6 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
         <section class="card">
           <div class="pred-header">
             <h2 class="h3" id="pred-title">{nextDraw}회차 예측</h2>
-            <div class="select-row">
-              <select id="round-select" aria-label="예측 회차 선택">
-                {rounds.map((r) => (
-                  <option value={r} selected={r === nextDraw}>{r}회차</option>
-                ))}
-              </select>
-              <select id="file-select" aria-label="예측 파일 선택"></select>
-            </div>
           </div>
           <p class="body-1" id="pred-summary" style="margin:0 0 10px"></p>
           <ul class="pred-list" id="pred-list"></ul>
