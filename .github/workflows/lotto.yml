@@ -48,7 +48,8 @@ jobs:
         run: npm run build
 
       - name: Update README
-        run: python3 scripts/update_readme.py
+        working-directory: astro-app
+        run: node scripts/update-readme.mjs
 
       - name: Commit updated data
         run: |
