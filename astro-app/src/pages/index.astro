@@ -1,17 +1,573 @@
 ---
+import { getCollection } from "astro:content";
 
+interface PredictionEntry {
+  file: string;
+  based_on_drwNo: number;
+  next_draw: number;
+  generated_at: string;
+  predictions: number[][];
+  option2: number[][] | null;
+}
+
+const BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"];
+function ballZone(n: number): string {
+  return BALL_COLORS[Math.min(Math.floor((n - 1) / 10), 4)];
+}
+function numberBallHtml(n: number): string {
+  return `<span class="number-ball ${ballZone(n)}">${n}</span>`;
+}
+
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+const drawEntries = await getCollection("draws");
+const draws = drawEntries.map((e) => e.data).sort((a, b) => a.drwNo - b.drwNo);
+const latestDraw = draws[draws.length - 1];
+
+const predictionEntries = await getCollection("predictions");
+// predict.py가 예전엔 {"predictions": [...]} 형태(1안만)로 저장했다 — 그 시절 파일도 계속 읽을 수 있게
+// option1이 없는 레거시 파일은 최상위 predictions 필드로 폴백한다 (build_dashboard.py의
+// option1_predictions/option2_predictions와 동일한 처리).
+const allPredictions: PredictionEntry[] = predictionEntries
+  .map((e) => {
+    const raw = e.data as typeof e.data & { predictions?: number[][] };
+    return {
+      file: e.data.file,
+      based_on_drwNo: e.data.based_on_drwNo,
+      next_draw: e.data.based_on_drwNo + 1,
+      generated_at: e.data.generated_at,
+      predictions: e.data.option1?.predictions ?? raw.predictions ?? [],
+      option2: e.data.option2 ? e.data.option2.predictions : null,
+    };
+  })
+  .sort((a, b) => (a.generated_at < b.generated_at ? 1 : a.generated_at > b.generated_at ? -1 : 0));
+
+const latestPrediction = allPredictions[0];
+const predFilename = latestPrediction?.file ?? "";
+const nextDraw = latestPrediction ? latestPrediction.based_on_drwNo + 1 : 0;
+
+const rounds = [...new Set(allPredictions.map((e) => e.next_draw))].sort((a, b) => b - a);
+
+const recentDraws = draws.slice(-5).slice().reverse();
+
+function nextDrawDateLabel(draw: typeof latestDraw): string {
+  if (!draw) return "";
+  const lastDate = new Date(`${draw.date}T00:00:00+09:00`);
+  const nextDate = new Date(lastDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const nowKst = new Date(Date.now() + KST_OFFSET_MS);
+  const todayUtc = Date.UTC(nowKst.getUTCFullYear(), nowKst.getUTCMonth(), nowKst.getUTCDate());
+  const nextUtc = Date.UTC(nextDate.getUTCFullYear(), nextDate.getUTCMonth(), nextDate.getUTCDate());
+  const dDay = Math.round((nextUtc - todayUtc) / (24 * 60 * 60 * 1000));
+  const nextDateLabel = nextDate.toISOString().slice(0, 10);
+  if (dDay > 0) return `다음 추첨 ${nextDateLabel} (D-${dDay})`;
+  if (dDay === 0) return `다음 추첨 ${nextDateLabel} (오늘)`;
+  return `다음 추첨 ${nextDateLabel} (결과 반영 대기)`;
+}
+const ddayLabel = nextDrawDateLabel(latestDraw);
+
+const nowKst = new Date(Date.now() + KST_OFFSET_MS);
+const pad = (n: number) => String(n).padStart(2, "0");
+const generatedAtLabel = `${nowKst.getUTCFullYear()}-${pad(nowKst.getUTCMonth() + 1)}-${pad(nowKst.getUTCDate())} ${pad(nowKst.getUTCHours())}:${pad(nowKst.getUTCMinutes())}`;
+
+const nextDrawLabel = `${nextDraw}회차 예측 기준`;
+
+const drawsByNo: Record<number, number[]> = {};
+for (const d of draws) drawsByNo[d.drwNo] = d.numbers;
+
+// 사이드바 회차 그룹: reports/ 디렉터리 대신 predictions 컬렉션을 회차(next_draw) 기준으로 묶어 사용한다.
+// (T9에서 reports 목록 페이지를 별도로 이식할 예정 — 이 사이드바 링크가 가리키는 report 파일이
+// 아직 생성되지 않았을 수 있다는 점에 유의.)
+const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.map((r) => ({
+  nextDraw: r,
+  items: allPredictions.filter((p) => p.next_draw === r),
+}));
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/favicon.svg" />
+  <title>로또 대시보드</title>
+  <script is:inline>
+    (function () {
+      try {
+        const saved = localStorage.getItem("lotto-theme");
+        if (saved === "dark" || saved === "light") document.documentElement.dataset.theme = saved;
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --blue-500: oklch(0.624 0.176 254);
+      --blue-50:  oklch(0.965 0.020 250);
+      --grey-900: oklch(0.234 0.030 254);
+      --grey-700: oklch(0.452 0.028 253);
+      --grey-400: oklch(0.752 0.016 251);
+      --grey-200: oklch(0.913 0.008 247);
+      --grey-100: oklch(0.957 0.005 247);
+      --grey-50:  oklch(0.978 0.003 247);
+      --white:    oklch(1.000 0.000 0);
+      --red-500:  oklch(0.628 0.218 22);
+      --green-500: oklch(0.493 0.143 154);
+      --ball-yellow: oklch(0.853 0.156 86);
+      --ball-blue:   oklch(0.624 0.176 254);
+      --ball-red:    oklch(0.628 0.218 22);
+      --ball-grey:   oklch(0.555 0.022 253);
+      --ball-green:  oklch(0.493 0.143 154);
+      --text-primary: var(--grey-900);
+      --text-secondary: var(--grey-700);
+      --text-tertiary: oklch(0.155 0.060 261 / 0.58);
+      --border-secondary: var(--grey-200);
+      --shadow-1: 0 1px 2px oklch(0.155 0.060 261 / 0.06), 0 1px 1px oklch(0.155 0.060 261 / 0.04);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --blue-500: #6f8fb8;
+        --blue-50:  #24344a;
+        --grey-900: #ecebe6;
+        --grey-700: #b7b6ac;
+        --grey-400: #85847a;
+        --grey-200: #35363a;
+        --grey-100: #232428;
+        --grey-50:  #1d1e21;
+        --white:    #16171a;
+        --red-500:  #d9736b;
+        --green-500: #4fa688;
+        --text-tertiary: rgba(236, 235, 230, 0.58);
+        --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 1px rgba(0, 0, 0, 0.20);
+      }
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --blue-500: #6f8fb8;
+      --blue-50:  #24344a;
+      --grey-900: #ecebe6;
+      --grey-700: #b7b6ac;
+      --grey-400: #85847a;
+      --grey-200: #35363a;
+      --grey-100: #232428;
+      --grey-50:  #1d1e21;
+      --white:    #16171a;
+      --red-500:  #d9736b;
+      --green-500: #4fa688;
+      --text-tertiary: rgba(236, 235, 230, 0.58);
+      --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 1px rgba(0, 0, 0, 0.20);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; color: var(--text-primary); background: var(--white);
+      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .h3 { font-size: 20px; font-weight: 700; line-height: 1.35; letter-spacing: -0.015em; margin: 0 0 12px; }
+    .body-1 { font-size: 15px; font-weight: 400; line-height: 1.5; letter-spacing: -0.005em; margin: 0; }
+    .caption { font-size: 12px; font-weight: 500; line-height: 1.4; color: var(--text-tertiary); margin: 8px 0 0; }
+    .footnote { font-size: 12px; font-weight: 500; line-height: 1.4; color: var(--text-tertiary); margin-top: 24px; }
+    .table-numeric { font-variant-numeric: tabular-nums; }
+
+    .top-nav {
+      height: 56px; flex: none; display: flex; align-items: center; gap: 12px; justify-content: space-between;
+      padding: 0 20px; background: var(--white); border-bottom: 1px solid var(--border-secondary);
+    }
+    .top-nav .title-1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+    .top-nav .caption { margin: 0; }
+    .menu-btn {
+      display: none; flex: none; width: 36px; height: 36px; border: none; background: none;
+      border-radius: 12px; cursor: pointer; align-items: center; justify-content: center;
+    }
+    .menu-btn:hover { background: var(--grey-100); }
+    .menu-btn svg { width: 20px; height: 20px; }
+    .theme-btn {
+      flex: none; width: 36px; height: 36px; border: none; background: none; color: var(--text-secondary);
+      border-radius: 12px; cursor: pointer; align-items: center; justify-content: center; display: flex;
+    }
+    .theme-btn:hover { background: var(--grey-100); }
+    .theme-btn svg { width: 18px; height: 18px; }
+    .theme-btn .icon-moon { display: none; }
+    :root[data-theme="dark"] .theme-btn .icon-sun { display: none; }
+    :root[data-theme="dark"] .theme-btn .icon-moon { display: block; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .theme-btn .icon-sun { display: none; }
+      :root:not([data-theme="light"]) .theme-btn .icon-moon { display: block; }
+    }
+    .sidebar-backdrop { display: none; }
+
+    .layout { display: flex; height: calc(100vh - 56px); position: relative; }
+    .sidebar { width: 260px; flex: none; overflow-y: auto; border-right: 1px solid var(--border-secondary); background: var(--grey-50); }
+
+    @media (max-width: 768px) {
+      .menu-btn { display: inline-flex; }
+      .top-nav .caption { display: none; }
+      .layout { position: relative; overflow: hidden; }
+      .sidebar {
+        position: fixed; top: 56px; bottom: 0; left: 0; z-index: 20; width: 78vw; max-width: 320px;
+        box-shadow: var(--shadow-1); transform: translateX(-100%); transition: transform 200ms cubic-bezier(0.16,1,0.3,1);
+      }
+      .sidebar.is-open { transform: translateX(0); }
+      .sidebar-backdrop {
+        display: block; position: fixed; inset: 56px 0 0 0; background: oklch(0 0 0 / 0.32);
+        z-index: 15; opacity: 0; pointer-events: none; transition: opacity 200ms ease;
+      }
+      .sidebar-backdrop.is-open { opacity: 1; pointer-events: auto; }
+    }
+    .sidebar-title { font-size: 12px; font-weight: 700; color: var(--text-tertiary); letter-spacing: 0.02em; padding: 16px 16px 8px; margin: 0; }
+    .sidebar > ul { list-style: none; margin: 0; padding: 8px 8px 12px; }
+    .home-link {
+      display: block; padding: 8px 12px; margin: 8px 8px 6px; border-radius: 12px;
+      font-size: 15px; font-weight: 600; color: var(--text-secondary); text-decoration: none;
+      border-left: 3px solid transparent;
+    }
+    .home-link:hover { background: var(--grey-100); }
+    .home-link.active { background: var(--blue-50); color: var(--blue-500); border-left-color: var(--blue-500); }
+
+    .draw-group { margin-bottom: 2px; }
+    .draw-group.is-hidden { display: none; }
+    .draw-header { width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 8px 8px; border-radius: 12px; font: inherit; text-align: left; }
+    .draw-header:hover { background: var(--grey-100); }
+    .draw-header .chevron { font-size: 10px; color: var(--grey-400); transition: transform 200ms cubic-bezier(0.16,1,0.3,1); flex: none; }
+    .draw-header[aria-expanded="true"] .chevron { transform: rotate(90deg); }
+    .draw-label { flex: 1; font-size: 12.5px; font-weight: 600; }
+    .draw-count { font-size: 10.5px; color: var(--text-secondary); background: var(--grey-100); border-radius: 999px; padding: 1px 7px; font-variant-numeric: tabular-nums; }
+    .draw-body { list-style: none; margin: 0; padding: 0; max-height: 0; overflow: hidden; transition: max-height 200ms cubic-bezier(0.16,1,0.3,1); }
+    .draw-body[data-open="true"] { max-height: 400px; }
+    .draw-body li a { display: block; padding: 6px 10px 6px 27px; font-size: 12.5px; text-decoration: none; color: var(--text-secondary); border-radius: 12px; margin: 1px 4px; border-left: 3px solid transparent; font-variant-numeric: tabular-nums; }
+    .draw-body li a:hover { background: var(--grey-100); }
+    .draw-body li a.active { background: var(--blue-50); color: var(--blue-500); font-weight: 600; border-left-color: var(--blue-500); }
+
+    .main { flex: 1; overflow-y: auto; }
+    #dashboard-view {
+      max-width: 1440px; margin: 0 auto; padding: 20px; box-sizing: border-box;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px;
+    }
+    #dashboard-view[hidden] { display: none; }
+    .dash-footer {
+      grid-column: 1 / -1; display: flex; gap: 16px; flex-wrap: wrap;
+      padding-top: 16px; border-top: 1px solid var(--border-secondary);
+    }
+    .dash-footer .footnote { margin: 0; }
+    .card {
+      border: 1px solid var(--border-secondary); border-radius: 16px; box-shadow: var(--shadow-1);
+      padding: 20px; margin-bottom: 0;
+    }
+    .card .h3 { margin-bottom: 12px; }
+    .pred-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .pred-header .h3 { margin: 0; }
+    .select-row { display: flex; gap: 8px; }
+    .select-row select {
+      font: inherit; font-size: 13px; font-weight: 600; color: var(--text-primary);
+      background: var(--grey-50); border: 1px solid var(--border-secondary); border-radius: 8px;
+      padding: 8px 12px; min-height: 32px; box-sizing: border-box; cursor: pointer;
+    }
+    .number-ball {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 999px; margin-right: 6px;
+      font-size: 15px; font-weight: 600; color: var(--white); font-variant-numeric: tabular-nums;
+    }
+    .number-ball.ball-yellow { background: var(--ball-yellow); color: #1c1c1c; }
+    .number-ball.ball-blue { background: var(--ball-blue); }
+    .number-ball.ball-red { background: var(--ball-red); }
+    .number-ball.ball-grey { background: var(--ball-grey); }
+    .number-ball.ball-green { background: var(--ball-green); }
+    .number-ball.hit { outline: 2px solid var(--green-500); outline-offset: 1px; }
+
+    ul.pred-list { list-style: none; margin: 0; padding: 0; }
+    .pred-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); }
+    .pred-row:last-child { border-bottom: none; }
+    .set-idx { color: var(--text-tertiary); width: 16px; font-size: 12px; font-weight: 500; flex: none; }
+    .set-nums { line-height: 1; }
+    .set-nums .number-ball { width: 28px; height: 28px; font-size: 13px; margin-right: 4px; }
+
+    .recent-list { list-style: none; margin: 0; padding: 0; }
+    .recent-row { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); }
+    .recent-row:last-child { border-bottom: none; }
+    .recent-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .recent-no { font-size: 13px; font-weight: 700; flex: none; }
+    .recent-date { font-size: 12px; color: var(--text-tertiary); flex: none; }
+    .recent-balls { line-height: 1; }
+    .recent-balls .number-ball { width: 26px; height: 26px; font-size: 12px; margin-right: 4px; }
+    .recent-amount { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); flex: none; }
+
+    .accuracy-badge {
+      display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 10px;
+      font-size: 15px; font-weight: 600; background: var(--blue-50); color: var(--blue-500);
+    }
+    .accuracy-badge.dim { background: var(--grey-100); color: var(--text-secondary); }
+
+    iframe { display: block; width: 100%; height: 100%; border: none; }
+    iframe[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <header class="top-nav">
+    <button class="menu-btn" id="menu-btn" type="button" aria-label="리포트 목록 열기" aria-expanded="false" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+    </button>
+    <span class="title-1">로또 대시보드</span>
+    <span class="caption" style="flex:1">{nextDrawLabel}</span>
+    <button class="theme-btn" id="theme-btn" type="button" aria-label="다크 모드 전환">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </button>
+  </header>
+  <div class="layout">
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <nav class="sidebar" id="sidebar">
+      <h1 class="sidebar-title">리포트 목록</h1>
+      <a href="#" id="home-link" class="home-link active">대시보드 홈</a>
+      {sidebarGroups.length === 0 ? (
+        <p class="caption" style="padding:8px 16px">아직 생성된 리포트가 없습니다.</p>
+      ) : (
+        <ul id="group-list">
+          {sidebarGroups.map((group, gi) => (
+            <li class={`draw-group${gi >= 10 ? " is-hidden" : ""}`}>
+              <button class="draw-header" type="button" aria-expanded="false">
+                <span class="chevron">&#9656;</span>
+                <span class="draw-label">{group.nextDraw}회차 예측</span>
+                <span class="draw-count">{group.items.length}</span>
+              </button>
+              <ul class="draw-body">
+                {group.items.map((item) => (
+                  <li><a href="#" data-src={`/reports/${group.nextDraw}/${item.file.replace(/\.json$/, "")}/`}>{item.generated_at.replace("T", " ").slice(0, 16)}</a></li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </nav>
+    <main class="main">
+      <div id="dashboard-view">
+        <section class="card">
+          <div class="pred-header">
+            <h2 class="h3" id="pred-title">{nextDraw}회차 예측</h2>
+            <div class="select-row">
+              <select id="round-select" aria-label="예측 회차 선택">
+                {rounds.map((r) => (
+                  <option value={r} selected={r === nextDraw}>{r}회차</option>
+                ))}
+              </select>
+              <select id="file-select" aria-label="예측 파일 선택"></select>
+            </div>
+          </div>
+          <p class="body-1" id="pred-summary" style="margin:0 0 10px"></p>
+          <ul class="pred-list" id="pred-list"></ul>
+        </section>
+
+        <section class="card" id="pred2-card" hidden>
+          <h2 class="h3" id="pred2-title">2안 예측</h2>
+          <p class="body-1" id="pred2-summary" style="margin:0 0 10px"></p>
+          <ul class="pred-list" id="pred2-list"></ul>
+        </section>
+
+        <section class="card">
+          <h2 class="h3">최근 5회차 당첨결과</h2>
+          <ul class="recent-list">
+            {recentDraws.map((d) => {
+              const amount = d.firstPrizeAmount;
+              const amountLabel = amount != null ? `${amount.toLocaleString("ko-KR")}원` : "정보 없음";
+              return (
+                <li class="recent-row">
+                  <div class="recent-line">
+                    <span class="recent-no table-numeric">{d.drwNo}회</span>
+                    <span class="recent-balls" set:html={d.numbers.map((n) => numberBallHtml(n)).join(" ")}></span>
+                  </div>
+                  <div class="recent-line">
+                    <span class="recent-date table-numeric">{d.date}</span>
+                    <span class="recent-amount table-numeric">1등 {amountLabel}</span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <p class="caption">{ddayLabel}</p>
+        </section>
+
+        <div class="dash-footer">
+          <p class="footnote">본 예측은 통계적 근거가 없으며 오락 목적입니다. 로또는 완전 무작위 추첨입니다.</p>
+          <p class="footnote">마지막 갱신: {generatedAtLabel} (KST, GitHub Actions 자동 실행)</p>
+        </div>
+      </div>
+      <iframe id="viewer" title="선택한 회차 리포트" hidden></iframe>
+    </main>
+  </div>
+  <script define:vars={{ PREDICTIONS: allPredictions, DRAWS_BY_NO: drawsByNo, PRED_FILENAME: predFilename }}>
+    const BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"];
+
+    function ballHtml(n, hit) {
+      const zone = BALL_COLORS[Math.min(Math.floor((n - 1) / 10), 4)];
+      return `<span class="number-ball ${zone}${hit ? ' hit' : ''}">${n}</span>`;
+    }
+    function computeHits(predictions, actualNumbers) {
+      const actual = new Set(actualNumbers);
+      return predictions.map(combo => combo.filter(n => actual.has(n)).length);
+    }
+
+    const roundSelect = document.getElementById('round-select');
+    const fileSelect = document.getElementById('file-select');
+    const predList = document.getElementById('pred-list');
+    const predSummary = document.getElementById('pred-summary');
+    const predTitle = document.getElementById('pred-title');
+
+    function filesForRound(round) {
+      return PREDICTIONS.filter(p => p.next_draw === Number(round));
+    }
+
+    function renderFileOptions(round) {
+      const files = filesForRound(round);
+      fileSelect.innerHTML = files.map(f =>
+        `<option value="${f.file}">${f.generated_at.replace('T', ' ').slice(0, 16)}</option>`
+      ).join('');
+    }
+
+    const pred2Card = document.getElementById('pred2-card');
+    const pred2List = document.getElementById('pred2-list');
+    const pred2Summary = document.getElementById('pred2-summary');
+    const pred2Title = document.getElementById('pred2-title');
+
+    function renderPredList(listEl, predictions, actualNumbers) {
+      if (actualNumbers) {
+        const hitSet = new Set(actualNumbers);
+        listEl.innerHTML = predictions.map((combo, i) => `
+          <li class="pred-row">
+            <span class="set-idx">${i + 1}</span>
+            <span class="set-nums">${combo.map(n => ballHtml(n, hitSet.has(n))).join(' ')}</span>
+          </li>
+        `).join('');
+      } else {
+        listEl.innerHTML = predictions.map((combo, i) => `
+          <li class="pred-row">
+            <span class="set-idx">${i + 1}</span>
+            <span class="set-nums">${combo.map(n => ballHtml(n, false)).join(' ')}</span>
+          </li>
+        `).join('');
+      }
+    }
+
+    function renderPrediction(round, filename) {
+      const entry = PREDICTIONS.find(p => p.next_draw === Number(round) && p.file === filename);
+      if (!entry) return;
+      predTitle.textContent = `${entry.next_draw}회차 예측 (1안)`;
+
+      const actualNumbers = DRAWS_BY_NO[entry.next_draw];
+      if (actualNumbers) {
+        const hits = computeHits(entry.predictions, actualNumbers);
+        const best = Math.max(...hits);
+        const badges = hits.map(h => `<span class="accuracy-badge${h === 0 ? ' dim' : ''}">${h}개</span>`).join(' ');
+        predSummary.innerHTML = `적중 ${badges} · 최고 ${best}개`;
+      } else {
+        predSummary.textContent = '아직 추첨 전입니다 — 결과 발표 후 적중 이력이 집계됩니다.';
+      }
+      renderPredList(predList, entry.predictions, actualNumbers);
+
+      if (entry.option2) {
+        pred2Card.hidden = false;
+        pred2Title.textContent = `${entry.next_draw}회차 예측 (2안)`;
+        if (actualNumbers) {
+          const hits2 = computeHits(entry.option2, actualNumbers);
+          const best2 = Math.max(...hits2);
+          const badges2 = hits2.map(h => `<span class="accuracy-badge${h === 0 ? ' dim' : ''}">${h}개</span>`).join(' ');
+          pred2Summary.innerHTML = `적중 ${badges2} · 최고 ${best2}개`;
+        } else {
+          pred2Summary.textContent = '아직 추첨 전입니다 — 결과 발표 후 적중 이력이 집계됩니다.';
+        }
+        renderPredList(pred2List, entry.option2, actualNumbers);
+      } else {
+        pred2Card.hidden = true;
+      }
+    }
+
+    roundSelect.addEventListener('change', () => {
+      renderFileOptions(roundSelect.value);
+      renderPrediction(roundSelect.value, fileSelect.value);
+    });
+    fileSelect.addEventListener('change', () => {
+      renderPrediction(roundSelect.value, fileSelect.value);
+    });
+
+    renderFileOptions(roundSelect.value);
+    fileSelect.value = PRED_FILENAME;
+    renderPrediction(roundSelect.value, fileSelect.value);
+
+    const dashboardView = document.getElementById('dashboard-view');
+    const viewer = document.getElementById('viewer');
+
+    const homeLink = document.getElementById('home-link');
+    const navLinks = [homeLink, ...document.querySelectorAll('.draw-body a')];
+
+    const sidebar = document.getElementById('sidebar');
+    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+    const menuBtn = document.getElementById('menu-btn');
+    const themeBtn = document.getElementById('theme-btn');
+
+    function currentTheme() {
+      return document.documentElement.dataset.theme
+        || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    }
+    function syncIframeTheme() {
+      try {
+        const doc = viewer.contentDocument;
+        if (doc && doc.documentElement) doc.documentElement.dataset.theme = currentTheme();
+      } catch (e) {}
+    }
+    themeBtn.addEventListener('click', () => {
+      const next = currentTheme() === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      try { localStorage.setItem('lotto-theme', next); } catch (e) {}
+      syncIframeTheme();
+    });
+    viewer.addEventListener('load', syncIframeTheme);
+
+    function closeSidebar() {
+      sidebar.classList.remove('is-open');
+      sidebarBackdrop.classList.remove('is-open');
+      menuBtn.setAttribute('aria-expanded', 'false');
+    }
+    function openSidebar() {
+      sidebar.classList.add('is-open');
+      sidebarBackdrop.classList.add('is-open');
+      menuBtn.setAttribute('aria-expanded', 'true');
+    }
+    menuBtn.addEventListener('click', () => {
+      sidebar.classList.contains('is-open') ? closeSidebar() : openSidebar();
+    });
+    sidebarBackdrop.addEventListener('click', closeSidebar);
+
+    document.querySelectorAll('.draw-body a').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        viewer.src = a.dataset.src;
+        viewer.hidden = false;
+        dashboardView.hidden = true;
+        navLinks.forEach(el => el.classList.remove('active'));
+        a.classList.add('active');
+        closeSidebar();
+      });
+    });
+
+    document.querySelectorAll('button.draw-header').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const open = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+        const body = btn.nextElementSibling;
+        body.setAttribute('data-open', open ? 'false' : 'true');
+        if (!open) {
+          const firstLink = body.querySelector('a');
+          if (firstLink) firstLink.click();
+        }
+      });
+    });
+
+    homeLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      viewer.hidden = true;
+      dashboardView.hidden = false;
+      navLinks.forEach(el => el.classList.remove('active'));
+      homeLink.classList.add('active');
+      closeSidebar();
+    });
+  </script>
+</body>
 </html>

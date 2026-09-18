@@ -69,6 +69,22 @@ export function generateAndSavePredictions(draws: Draw[], options: GenerateAndSa
   return output;
 }
 
+// predict.py used to save {"predictions": [...]} (option1 only, no option1/option2 wrapper)
+// before the option1/option2 schema existed. Normalize those legacy files on read so every
+// PredictionSet consumers see always has option1.predictions, matching the current schema.
+function normalizeLegacyShape(raw: unknown): PredictionSet {
+  const obj = raw as Record<string, unknown>;
+  if (obj && obj.option1 === undefined && Array.isArray(obj.predictions)) {
+    return {
+      based_on_drwNo: obj.based_on_drwNo as number,
+      generated_at: obj.generated_at as string,
+      option1: { predictions: obj.predictions as number[][] },
+      option2: null,
+    };
+  }
+  return raw as PredictionSet;
+}
+
 export function listAllPredictions(
   predictionsDir: string,
 ): { filename: string; data: PredictionSet }[] {
@@ -84,8 +100,8 @@ export function listAllPredictions(
       if (!fileEntry.isFile()) continue;
       if (!fileEntry.name.startsWith("predictions_") || !fileEntry.name.endsWith(".json")) continue;
       const filePath = path.join(roundDir, fileEntry.name);
-      const data = JSON.parse(readFileSync(filePath, "utf-8")) as PredictionSet;
-      candidates.push({ filename: fileEntry.name, data });
+      const raw = JSON.parse(readFileSync(filePath, "utf-8"));
+      candidates.push({ filename: fileEntry.name, data: normalizeLegacyShape(raw) });
     }
   }
   return candidates;
