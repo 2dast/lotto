@@ -1,0 +1,82 @@
+---
+// Ports renderRangeCharts() from scripts/report_template.html.
+//
+// Option A: the original builds one <svg> per condition purely from static
+// `predictions` + `conditions` data (axis scaling, track/allowed-range rects,
+// value dots) and never updates it after the initial render. All of that
+// geometry (scaleX, rect positions, dot stacking for overlapping values) is
+// plain arithmetic, so it is computed once at build time in frontmatter and
+// emitted as static SVG markup — no client-side JS needed.
+import { groupOverlappingPoints, SET_COLOR_VARS } from "./chartMath";
+
+export interface RangeCondition {
+  label: string;
+  axisMin: number;
+  axisMax: number;
+  allowedMin: number;
+  allowedMax: number;
+  value: (combo: number[]) => number;
+}
+
+interface Props {
+  predictions: number[][];
+  conditions: RangeCondition[];
+}
+
+const { predictions, conditions } = Astro.props;
+
+const W = 680;
+const H = 62;
+const padL = 108;
+const padR = 40;
+const trackY = 16;
+const trackH = 14;
+const plotW = W - padL - padR;
+
+function scaleX(v: number, cond: RangeCondition): number {
+  return padL + ((v - cond.axisMin) / (cond.axisMax - cond.axisMin)) * plotW;
+}
+
+const charts = conditions.map((cond) => {
+  const allowedX = scaleX(cond.allowedMin, cond);
+  const allowedW = scaleX(cond.allowedMax, cond) - allowedX;
+  const values = predictions.map(cond.value);
+  const groups = groupOverlappingPoints(values);
+  const points = predictions.map((_, setIdx) => {
+    const { offsetIndex, groupSize } = groups[setIdx];
+    return {
+      cx: scaleX(values[setIdx], cond),
+      cy: trackY + trackH / 2 + (offsetIndex - (groupSize - 1) / 2) * 9,
+      color: `var(${SET_COLOR_VARS[setIdx % SET_COLOR_VARS.length]})`,
+    };
+  });
+  return {
+    label: cond.label,
+    allowedX,
+    allowedW,
+    rangeLabelX: (allowedX + allowedX + allowedW) / 2,
+    rangeLabelText: `허용 ${cond.allowedMin}~${cond.allowedMax}`,
+    points,
+  };
+});
+---
+<div class="range-charts">
+  {charts.map((chart) => (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
+      <text x="0" y={trackY + trackH / 2 + 4} text-anchor="start">{chart.label}</text>
+      <rect x={padL} y={trackY} width={plotW} height={trackH} rx="4" class="range-track" />
+      <rect x={chart.allowedX} y={trackY} width={chart.allowedW} height={trackH} rx="4" class="range-allowed" />
+      <text x={chart.rangeLabelX} y={trackY + trackH + 12} text-anchor="middle">{chart.rangeLabelText}</text>
+      {chart.points.map((p) => (
+        <circle cx={p.cx} cy={p.cy} r="4.5" fill={p.color} stroke="var(--paper)" stroke-width="1.5" />
+      ))}
+    </svg>
+  ))}
+</div>
+<div class="range-legend">
+  {predictions.map((_, i) => (
+    <div class="range-legend-item">
+      <span class="range-legend-dot" style={`background:var(${SET_COLOR_VARS[i % SET_COLOR_VARS.length]})`}></span>세트 {i + 1}
+    </div>
+  ))}
+</div>

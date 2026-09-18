@@ -1,0 +1,56 @@
+---
+// Ports renderPredTable() from scripts/report_template.html.
+//
+// Option A: the original function only computes derived values (sum, odd
+// count, max consecutive run, zone distribution) from a static `predictions`
+// array and imperatively builds <tr> markup once. Since predictions are known
+// at build time and never change afterward, there is no interactive reason to
+// keep this as client-side JS — Astro renders the same table directly from
+// props with zero shipped JS.
+import { odd, maxConsecutive, zoneCount, officialColor, ZONE_RANGES } from "./chartMath";
+
+interface Props {
+  predictions: number[][];
+}
+
+const { predictions } = Astro.props;
+
+const rows = predictions.map((combo) => ({
+  combo,
+  sum: combo.reduce((a, b) => a + b, 0),
+  odd: odd(combo),
+  run: maxConsecutive(combo),
+  zones: ZONE_RANGES.map(([lo, hi]) => zoneCount(combo, lo, hi)).join("·"),
+}));
+---
+<div class="table-scroll">
+  <table class="screen-table">
+    <thead>
+      <tr>
+        <th>세트</th><th>번호</th>
+        <th style="text-align:right">합계</th>
+        <th style="text-align:right">홀수</th>
+        <th style="text-align:right">최대연속</th>
+        <th style="text-align:right">구간분포</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((row, i) => (
+        <tr>
+          <td>{i + 1}</td>
+          <td>
+            <div class="combo-numbers">
+              {row.combo.map((n) => (
+                <span class="ball" style={`background:${officialColor(n)}`}>{n}</span>
+              ))}
+            </div>
+          </td>
+          <td class="num">{row.sum}</td>
+          <td class="num">{row.odd}</td>
+          <td class="num">{row.run}</td>
+          <td class="num">{row.zones}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>

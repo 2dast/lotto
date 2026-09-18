@@ -1,0 +1,67 @@
+---
+// Ports renderDistribution() from scripts/report_template.html.
+//
+// Option A: like RangeChart, this dot-plot (number 1-45 on X, occurrence
+// count on Y) is derived entirely from the static `predictions` array and
+// rendered once. All geometry (axis scale, grid lines, tick labels, stacked
+// dots per number) is plain arithmetic computed at build time; no client-side
+// JS is needed to reproduce it.
+import { officialColor } from "./chartMath";
+
+interface Props {
+  predictions: number[][];
+}
+
+const { predictions } = Astro.props;
+
+const W = 680;
+const H = 120;
+const padL = 24;
+const padR = 12;
+const padT = 10;
+const padB = 20;
+const plotW = W - padL - padR;
+const baseY = H - padB;
+const x = (n: number) => padL + ((n - 1) / 44) * plotW;
+
+const counts = new Array(46).fill(0);
+predictions.forEach((combo) => combo.forEach((n) => counts[n]++));
+const maxCount = Math.max(...counts.slice(1), 1);
+const plotH = baseY - padT;
+const step = plotH / maxCount;
+const r = Math.min(6, step / 2 - 1);
+
+const yTicks = Array.from({ length: maxCount + 1 }, (_, v) => ({
+  v,
+  cy: baseY - v * step,
+}));
+
+const numbers = Array.from({ length: 45 }, (_, i) => i + 1);
+const xTickLabels = [1, 5, 10, 15, 20, 25, 30, 35, 40, 45];
+
+const dots = numbers.flatMap((n) => {
+  const count = counts[n];
+  const cx = x(n);
+  const color = officialColor(n);
+  return Array.from({ length: count }, (_, i) => {
+    const k = i + 1;
+    return { cx, cy: baseY - k * step, color };
+  });
+});
+---
+<svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
+  {yTicks.map((t) => (
+    <text x={padL - 6} y={t.cy + 3} text-anchor="end">{t.v}</text>
+  ))}
+  <text x="0" y={padT - 2} text-anchor="start">횟수</text>
+  {numbers.map((n) => (
+    <line x1={x(n)} y1={padT} x2={x(n)} y2={baseY} stroke="var(--border)" stroke-width="1" stroke-dasharray="2,3" />
+  ))}
+  <line x1={padL} y1={baseY} x2={W - padR} y2={baseY} class="axis-line" />
+  {xTickLabels.map((n) => (
+    <text x={x(n)} y={baseY + 13} text-anchor="middle">{n}</text>
+  ))}
+  {dots.map((d) => (
+    <circle cx={d.cx} cy={d.cy} r={r} fill={d.color} stroke="var(--paper)" stroke-width="1.5" />
+  ))}
+</svg>
