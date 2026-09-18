@@ -87,7 +87,7 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="/favicon.svg" />
+  <link rel="icon" href={`${import.meta.env.BASE_URL}/favicon.svg`.replace(/\/{2,}/g, "/")} />
   <title>로또 대시보드</title>
   <script is:inline>
     (function () {
@@ -330,7 +330,7 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
               </button>
               <ul class="draw-body">
                 {group.items.map((item) => (
-                  <li><a href="#" data-src={`/reports/${group.nextDraw}/${item.file.replace(/\.json$/, "")}/`}>{item.generated_at.replace("T", " ").slice(0, 16)}</a></li>
+                  <li><a href="#" data-src={`${import.meta.env.BASE_URL}/reports/${group.nextDraw}/${item.file.replace(/\.json$/, "")}/`.replace(/\/{2,}/g, "/")}>{item.generated_at.replace("T", " ").slice(0, 16)}</a></li>
                 ))}
               </ul>
             </li>

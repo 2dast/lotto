@@ -17,7 +17,7 @@ const items: Item[] = predictions.map((p) => {
   return {
     nextDraw,
     generatedAt: p.data.generated_at,
-    href: `/reports/${nextDraw}/${file}/`,
+    href: `${import.meta.env.BASE_URL}/reports/${nextDraw}/${file}/`.replace(/\/{2,}/g, "/"),
   };
 });
 
