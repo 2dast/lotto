@@ -60,3 +60,20 @@
 - 최신 2개 메이저 버전의 Chrome/Edge/Safari/Firefox를 기준으로 한다 — GitHub Pages로
   배포되는 공개 정적 사이트이므로 구형 브라우저 폴리필은 하지 않는다.
 - 실험적/비표준 CSS(`@supports` 없이 최신 API만 의존)는 피한다.
+
+## Agent skills
+
+### Planning and implementation
+
+Use `atelier-orchestrator` at the start of development work. It selects an Inline Plan for bounded
+changes or a Spec-backed Plan when durable design and coordination artifacts are warranted.
+
+### Issue tracking
+
+Read `docs/agents/issue-tracker.md` when issue tracking is relevant. It defines this repository's
+tracker workflow; `plan.json` remains authoritative for Spec-backed task details and dependencies.
+
+### Domain documentation
+
+Read `docs/agents/domain.md` before working in a domain area. It defines how to locate and use this
+repository's context documents and ADRs.

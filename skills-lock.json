@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "skills": {
+    "atelier-orchestrator": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/atelier-orchestrator/SKILL.md",
+      "computedHash": "688d14ba1bd36c3f9e4622555b20f293b19d2c213f81ae18a6a5b1153444084e"
+    },
+    "atelier-setup": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/atelier-setup/SKILL.md",
+      "computedHash": "cfd31c2751fd1f666cb5d3c3f8e45909cdc29c5d1b9d5b147645af1afb7ff479"
+    },
+    "code-commit": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/code-commit/SKILL.md",
+      "computedHash": "2b293f123ab909d165ca28d4c0ad71e1c26bf6e5e27765569a0c55674f536a09"
+    },
+    "code-handoff": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/code-handoff/SKILL.md",
+      "computedHash": "2f57a218bee22fb5d9a4fdd7b91edea317187e7e3151bd92116aae5f1727c441"
+    },
+    "code-pull-request": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/code-pull-request/SKILL.md",
+      "computedHash": "540539e8ab9774c10b7ffcb242bd6cc0fffdc5a374b56a4373e001706eceb989"
+    },
+    "code-review": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/code-review/SKILL.md",
+      "computedHash": "24aac58b6131eb5ae799e3e6c13fd4aefe6ceab19f641ebd0053ff36d546418e"
+    },
+    "code-subagents": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/code-subagents/SKILL.md",
+      "computedHash": "bab6ffc2c4ac677dc46c67d23fe24de51d9d9558d6c50c50fcb43ef75f5b8456"
+    },
+    "oracle-debug": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/oracle-debug/SKILL.md",
+      "computedHash": "583e9aa194d602d51d660336dc9c53a0b10cc8d2eee20f8488fc543a3fb5f189"
+    },
+    "oracle-domain-modelling": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/oracle-domain-modelling/SKILL.md",
+      "computedHash": "9c6592983fca8391217e9bf02c442ebc1377a07dff78d660f57d5dd1213924a3"
+    },
+    "oracle-grill-me": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/oracle-grill-me/SKILL.md",
+      "computedHash": "981eb28bc0f9ea9b25c09d10f393e88b4bcfc47f8e485066eff4c400d6959eaa"
+    },
+    "spec-brainstorm": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/spec-brainstorm/SKILL.md",
+      "computedHash": "e461f39d2ed036ca8b7ba0283a3bb6dfaaeef4a397b3cbfdc504224c75d0b2d4"
+    },
+    "spec-finish": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/spec-finish/SKILL.md",
+      "computedHash": "d4d04a6fca9fb7883fcd2036ee8b96c7fe34b272d05ec6295b467d63107a9da6"
+    },
+    "spec-implement": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/spec-implement/SKILL.md",
+      "computedHash": "3aee78806990cc963772d738f4c0ba2c42d3d8b442c5b34eb22fa55c60710067"
+    },
+    "spec-plan": {
+      "source": "martinffx/atelier",
+      "sourceType": "github",
+      "skillPath": "skills/spec-plan/SKILL.md",
+      "computedHash": "f28609c5bbf5bbb9dcb011946eeca6e0c764bf66ac3da1fd5ba3694856ebe4b5"
+    }
+  }
+}
