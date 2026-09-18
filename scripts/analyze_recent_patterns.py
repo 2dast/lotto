@@ -6,13 +6,20 @@
 않는다 — 이 스크립트는 순수 분석/리포트 용도다.
 """
 import argparse
+import json
 import statistics
 import sys
 from pathlib import Path
 
-from predict import DEFAULT_ZONES, load_draws
-
 ROOT = Path(__file__).resolve().parent.parent
+DATA_PATH = ROOT / "data" / "draws.json"
+DEFAULT_ZONES = [(1, 9), (10, 19), (20, 29), (30, 39), (40, 45)]
+
+
+def load_draws(path: Path = DATA_PATH) -> list[dict]:
+    if not path.exists():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def zone_label(zone: tuple[int, int]) -> str:
