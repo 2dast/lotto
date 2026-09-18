@@ -8,53 +8,66 @@ on:
     branches: [main]
     paths:
       - "RULES.md"
-      - "scripts/report_template.html"
-      - "scripts/generate_report.py"
-      - "scripts/build_index.py"
-      - "scripts/predict.py"
-      - "scripts/build_dashboard.py"
+      - "RULES_2.md"
+      - "astro-app/**"
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  update:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.11"
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: astro-app/package-lock.json
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        working-directory: astro-app
+        run: npm ci
 
       - name: Run tests
-        run: pytest
+        working-directory: astro-app
+        run: npm test
 
-      - name: Collect latest draws
-        run: python scripts/collect.py
-
-      - name: Generate predictions
-        run: python scripts/predict.py
+      # astro build의 Content Layer 로더가 draws 수집·예측 생성·저장까지 전부 수행한다
+      # (draws-loader.ts, predictions-loader.ts). 실패해도 기존 데이터로 폴백하므로
+      # 이 스텝 자체가 실패하는 경우는 코드 버그일 때뿐이다.
+      - name: Build site
+        working-directory: astro-app
+        run: npm run build
 
       - name: Update README
-        run: python scripts/update_readme.py
+        run: python3 scripts/update_readme.py
 
-      - name: Generate analysis report
-        run: python scripts/generate_report.py
-
-      - name: Build report index
-        run: python scripts/build_index.py
-
-      - name: Build dashboard
-        run: python scripts/build_dashboard.py
-
-      - name: Commit changes
+      - name: Commit updated data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f data/draws.json predictions/ README.md reports/ index.html
+          git add -f data/draws.json predictions/ README.md
           git diff --cached --quiet || git commit -m "chore: update lotto data and predictions"
           git push
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: astro-app/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
