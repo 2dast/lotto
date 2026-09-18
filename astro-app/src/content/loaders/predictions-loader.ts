@@ -69,11 +69,11 @@ export function generateAndSavePredictions(draws: Draw[], options: GenerateAndSa
   return output;
 }
 
-export function loadLatestPredictions(
+export function listAllPredictions(
   predictionsDir: string,
-): { filename: string; data: PredictionSet } | null {
+): { filename: string; data: PredictionSet }[] {
   if (!existsSync(predictionsDir)) {
-    return null;
+    return [];
   }
 
   const candidates: { filename: string; data: PredictionSet }[] = [];
@@ -88,7 +88,13 @@ export function loadLatestPredictions(
       candidates.push({ filename: fileEntry.name, data });
     }
   }
+  return candidates;
+}
 
+export function loadLatestPredictions(
+  predictionsDir: string,
+): { filename: string; data: PredictionSet } | null {
+  const candidates = listAllPredictions(predictionsDir);
   if (candidates.length === 0) return null;
 
   return candidates.reduce((latest, current) =>
