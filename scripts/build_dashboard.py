@@ -454,17 +454,17 @@ def main() -> None:
   .draw-header .chevron {{ font-size: 10px; color: var(--grey-400); transition: transform 200ms cubic-bezier(0.16,1,0.3,1); flex: none; }}
   .draw-header[aria-expanded="true"] .chevron {{ transform: rotate(90deg); }}
   .draw-label {{ flex: 1; font-size: 12.5px; font-weight: 600; }}
-  .draw-count {{ font-size: 10.5px; color: var(--text-secondary); background: var(--grey-100); border-radius: 999px; padding: 1px 7px; }}
+  .draw-count {{ font-size: 10.5px; color: var(--text-secondary); background: var(--grey-100); border-radius: 999px; padding: 1px 7px; font-variant-numeric: tabular-nums; }}
   .draw-body {{ list-style: none; margin: 0; padding: 0; max-height: 0; overflow: hidden; transition: max-height 200ms cubic-bezier(0.16,1,0.3,1); }}
   .draw-body[data-open="true"] {{ max-height: 400px; }}
-  .draw-body li a {{ display: block; padding: 6px 10px 6px 27px; font-size: 12.5px; text-decoration: none; color: var(--text-secondary); border-radius: 12px; margin: 1px 4px; border-left: 3px solid transparent; }}
+  .draw-body li a {{ display: block; padding: 6px 10px 6px 27px; font-size: 12.5px; text-decoration: none; color: var(--text-secondary); border-radius: 12px; margin: 1px 4px; border-left: 3px solid transparent; font-variant-numeric: tabular-nums; }}
   .draw-body li a:hover {{ background: var(--grey-100); }}
   .draw-body li a.active {{ background: var(--blue-50); color: var(--blue-500); font-weight: 600; border-left-color: var(--blue-500); }}
 
   .main {{ flex: 1; overflow-y: auto; }}
   #dashboard-view {{
     max-width: 1440px; margin: 0 auto; padding: 20px; box-sizing: border-box;
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px;
   }}
   #dashboard-view[hidden] {{ display: none; }}
   .dash-footer {{
@@ -483,7 +483,7 @@ def main() -> None:
   .select-row select {{
     font: inherit; font-size: 13px; font-weight: 600; color: var(--text-primary);
     background: var(--grey-50); border: 1px solid var(--border-secondary); border-radius: 8px;
-    padding: 6px 10px; cursor: pointer;
+    padding: 8px 12px; min-height: 32px; box-sizing: border-box; cursor: pointer;
   }}
   .number-ball {{
     display: inline-flex; align-items: center; justify-content: center;
