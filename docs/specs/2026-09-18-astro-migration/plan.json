@@ -1,0 +1,427 @@
+{
+  "feature": "astro-migration",
+  "spec": "docs/specs/2026-09-18-astro-migration/design.md",
+  "goal": "로또 예측 사이트를 Python 정적 생성 파이프라인에서 Astro + TypeScript SSG로 재구축한다",
+  "preserved_behavior": [
+    "data/draws.json, predictions/round_*/*.json 파일 포맷·네이밍 규칙 불변",
+    "RULES.md / RULES_2.md DSL 문법 불변",
+    "매주 토요일 21:10 KST 자동 갱신 스케줄 유지",
+    "대시보드의 예측 옵션(1안/2안) 드롭다운 선택 기능 유지",
+    "리포트 상세의 홀짝/구간/분포 분석 표시 유지",
+    "최신 예측 파일 판별은 파일명이 아니라 generated_at(ISO8601) 기준 정렬"
+  ],
+  "phases": [
+    {
+      "id": "P1",
+      "name": "예측 엔진 순수 로직 포팅",
+      "tasks": [
+        {
+          "id": "T1",
+          "name": "RULES DSL 파서 이식",
+          "depends_on": [],
+          "inputs": [
+            "scripts/predict.py의 _parse_rule_lines, load_rules 구현",
+            "RULES.md, RULES_2.md 실제 파일"
+          ],
+          "description": "_parse_rule_lines/load_rules를 src/lib/lotto/rules.ts로 이식한다. 키워드(odd_even, sum, consecutive_max, zone, predictions, freq_all_weight, freq_recent_weight, freq_recent_window, freq_mode, exclude, include) 파싱 동작을 Python 버전과 동일하게 유지한다. 알 수 없는 키워드를 만나면 예외를 던지는 동작도 유지한다.",
+          "files": {
+            "reuse": ["RULES.md", "RULES_2.md"],
+            "create": ["astro-app/src/lib/lotto/rules.ts", "astro-app/src/lib/lotto/rules.test.ts"],
+            "modify": [],
+            "delete": []
+          },
+          "new_abstractions": [
+            {
+              "name": "Rules",
+              "requirement": "RULES.md DSL을 파싱한 조건 객체 — score/filters/generate가 소비",
+              "consumers": ["T2", "T3", "T4"]
+            }
+          ],
+          "validation": {
+            "tests": [
+              "RULES.md 파싱 결과가 Python load_rules(RULES_PATH) 출력과 필드별로 동일",
+              "RULES_2.md 파싱 성공",
+              "알 수 없는 키워드에서 예외 발생"
+            ],
+            "acceptance": [
+              "RULES.md, RULES_2.md 둘 다 파싱 성공",
+              "모든 키워드(odd_even/sum/consecutive_max/zone/predictions/freq_*/exclude/include) 커버"
+            ]
+          }
+        },
+        {
+          "id": "T2",
+          "name": "번호 점수화 이식",
+          "depends_on": ["T1"],
+          "inputs": [
+            "T1의 Rules 타입",
+            "scripts/predict.py의 score_numbers"
+          ],
+          "description": "전체/최근 빈도 가중 평균 계산을 src/lib/lotto/score.ts로 이식한다. hot/cold 모드 분기, all_time_weight/recent_weight 가중 평균, 정규화 로직을 동일하게 유지한다.",
+          "files": {
+            "reuse": [],
+            "create": ["astro-app/src/lib/lotto/score.ts", "astro-app/src/lib/lotto/score.test.ts"],
+            "modify": [],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "동일한 draws 샘플 입력에 대해 Python score_numbers 출력값과 부동소수점 허용오차(1e-9) 내 일치",
+              "hot 모드와 cold 모드 각각 검증"
+            ],
+            "acceptance": [
+              "hot/cold 두 모드 모두 Python 결과와 일치"
+            ]
+          }
+        },
+        {
+          "id": "T3",
+          "name": "필터 로직 이식",
+          "depends_on": ["T1"],
+          "inputs": [
+            "scripts/predict.py의 passes_filters",
+            "tests/test_predict.py의 기존 5개 케이스"
+          ],
+          "description": "홀짝 비율/합계/최대 연속/구간 필터를 src/lib/lotto/filters.ts로 이식한다. tests/test_predict.py의 케이스를 vitest로 1:1 재작성해 회귀 기준으로 삼는다.",
+          "files": {
+            "reuse": ["tests/test_predict.py"],
+            "create": ["astro-app/src/lib/lotto/filters.ts", "astro-app/src/lib/lotto/filters.test.ts"],
+            "modify": [],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "test_odd_even_ratio_rejects_all_even 동등 케이스",
+              "test_40s_zone_requires_one_to_two 동등 케이스",
+              "test_valid_combo_passes 동등 케이스",
+              "test_max_consecutive_exceeded 동등 케이스",
+              "test_sum_range_rejects_too_low 동등 케이스"
+            ],
+            "acceptance": [
+              "5개 케이스 전부 통과"
+            ]
+          }
+        },
+        {
+          "id": "T4",
+          "name": "가중 랜덤 추출·조합 생성 이식",
+          "depends_on": ["T2", "T3"],
+          "inputs": [
+            "T2 점수 계산, T3 필터",
+            "scripts/predict.py의 weighted_sample, generate_combo, generate_predictions",
+            "design.md Trade-offs: RNG 차이로 완전 동일값 재현 불가"
+          ],
+          "description": "알고리즘 구조(가중치+0.01 스무딩, 최대 시도 횟수, 중복 제거)는 동일하게 이식하되 RNG는 JS Math.random 기반으로 둔다. 완전히 동일한 난수 시퀀스 재현은 목표로 하지 않는다.",
+          "files": {
+            "reuse": [],
+            "create": ["astro-app/src/lib/lotto/generate.ts", "astro-app/src/lib/lotto/generate.test.ts"],
+            "modify": [],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "생성된 모든 조합이 passesFilters를 통과",
+              "num_predictions만큼 정확히 생성됨",
+              "생성된 조합 내 중복 없음",
+              "1000회 반복 실행에서도 필터 위반 조합 0건"
+            ],
+            "acceptance": [
+              "불변식(필터 통과, 개수, 중복 없음) 검증 통과"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "name": "데이터 수집 이식",
+      "tasks": [
+        {
+          "id": "T5",
+          "name": "동행복권 API 수집 이식",
+          "depends_on": [],
+          "inputs": [
+            "scripts/collect.py의 fetch_page, fetch_center, load_draws, save_draws",
+            "design.md 외부 API 계약 (srchDir=older/center, 헤더)"
+          ],
+          "description": "X-Requested-With/User-Agent 헤더를 포함한 Node fetch로 이식한다. srchDir=older 페이지네이션과 srchDir=center 최신 회차 조회 두 경로를 모두 구현한다. API 호출 실패 시 예외를 던지지 않고 기존 data/draws.json을 그대로 반환한다(design.md 빌드 실패 처리 정책).",
+          "files": {
+            "reuse": ["data/draws.json"],
+            "create": ["astro-app/src/content/loaders/draws-loader.ts", "astro-app/src/content/loaders/draws-loader.test.ts"],
+            "modify": [],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "mock 응답에 대해 older 페이지네이션 병합 로직 검증",
+              "mock 응답에 대해 center 최신 회차 조회 검증",
+              "API 실패(네트워크 에러) 시 기존 data/draws.json으로 폴백"
+            ],
+            "acceptance": [
+              "실제 외부 API 호출 없이 mock만으로 전체 시나리오 검증"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "P3",
+      "name": "Astro 스캐폴딩 + Content Layer",
+      "tasks": [
+        {
+          "id": "T6",
+          "name": "Astro 프로젝트 초기화 및 Content Layer 설정",
+          "depends_on": ["T5"],
+          "inputs": [
+            "design.md 아키텍처 섹션의 디렉터리 구조",
+            "T5 draws-loader"
+          ],
+          "description": "astro-app/에 Astro 프로젝트를 생성하고, content.config.ts에 draws, predictions 컬렉션을 design.md의 Zod 스키마대로 정의한다. draws 컬렉션을 T5의 draws-loader에 연결한다(predictions 컬렉션은 T7에서 연결).",
+          "files": {
+            "reuse": [],
+            "create": ["astro-app/astro.config.mjs", "astro-app/src/content.config.ts", "astro-app/package.json"],
+            "modify": [],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "astro build가 에러 없이 완료"
+            ],
+            "acceptance": [
+              "getCollection('draws')가 T5 데이터를 반환"
+            ]
+          }
+        },
+        {
+          "id": "T7",
+          "name": "예측 생성 loader 이식",
+          "depends_on": ["T1", "T2", "T3", "T4", "T6"],
+          "inputs": [
+            "T1~T4 순수 로직 모듈",
+            "scripts/predict.py의 main/generate_option 흐름",
+            "scripts/generate_report.py의 load_latest_predictions 정렬 규칙"
+          ],
+          "description": "predictions-loader.ts에서 T1~T4를 호출해 1안/2안 예측을 생성하고, predictions/round_{n}/predictions_{n}_{timestamp}.json으로 저장한 뒤 컬렉션에 로드한다. 최신 파일 판별은 파일명이 아니라 generated_at 기준 정렬을 유지한다(zero-padding 없는 회차 번호 때문에 파일명 정렬은 신뢰 불가).",
+          "files": {
+            "reuse": ["predictions/"],
+            "create": ["astro-app/src/content/loaders/predictions-loader.ts", "astro-app/src/content/loaders/predictions-loader.test.ts"],
+            "modify": ["astro-app/src/content.config.ts"],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "저장된 JSON이 기존 PredictionSet 포맷과 필드 단위로 일치",
+              "generated_at 기준 정렬이 파일명 정렬과 다른 케이스(zero-padding 없는 회차)에서도 올바르게 최신 파일 선택",
+              "기존 predictions/round_1242/*.json 18개 이상 파일을 정상적으로 읽어들임"
+            ],
+            "acceptance": [
+              "기존 이력 파일과 하위 호환"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "P4",
+      "name": "대시보드 페이지",
+      "tasks": [
+        {
+          "id": "T8",
+          "name": "대시보드 페이지 이식",
+          "depends_on": ["T7"],
+          "inputs": [
+            "scripts/build_dashboard.py의 HTML/CSS/JS (2026-09-18 수정한 모바일 CSS 포함)",
+            "T7의 predictions 컬렉션"
+          ],
+          "description": "사이드바(회차 목록, 768px 이하 오프캔버스 드로어), 예측 카드 그리드, select 드롭다운(예측 파일 전환) 동작을 src/pages/index.astro로 이식한다. 오늘 수정한 CSS(grid-template-columns: repeat(auto-fit, minmax(min(340px,100%),1fr)), .select-row select의 min-height:32px, .draw-count/.draw-body li a의 font-variant-numeric: tabular-nums)를 그대로 반영한다.",
+          "files": {
+            "reuse": ["scripts/build_dashboard.py (참고용, 삭제는 T13)"],
+            "create": ["astro-app/src/pages/index.astro"],
+            "modify": [],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "Playwright로 375/360/320px에서 document.documentElement.scrollWidth <= clientWidth 확인",
+              "select 요소 getBoundingClientRect().height >= 32px 확인"
+            ],
+            "acceptance": [
+              "select로 과거 예측 파일 전환 시 화면 데이터 갱신",
+              "1440px 데스크톱 레이아웃 회귀 없음(카드 다열 배치)"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "P5",
+      "name": "리포트 목록·상세 페이지",
+      "tasks": [
+        {
+          "id": "T9",
+          "name": "리포트 목록 페이지 이식",
+          "depends_on": ["T7"],
+          "inputs": [
+            "scripts/build_index.py"
+          ],
+          "description": "회차별 리포트 이력 탐색 UI(사이드바, 768px 이하 오프캔버스, tabular-nums 적용된 회차 목록)를 src/pages/reports/index.astro로 이식한다.",
+          "files": {
+            "reuse": ["scripts/build_index.py (참고용, 삭제는 T13)"],
+            "create": ["astro-app/src/pages/reports/index.astro"],
+            "modify": [],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "768px 이하에서 오프캔버스 드로어 동작 확인",
+              "가로 스크롤 없음 확인"
+            ],
+            "acceptance": [
+              "기존 reports/round_*/ 이력 전부 탐색 가능"
+            ]
+          }
+        },
+        {
+          "id": "T10",
+          "name": "예측표/차트 컴포넌트 이식",
+          "depends_on": [],
+          "inputs": [
+            "scripts/report_template.html의 renderPredTable, renderRangeCharts, renderDistribution, officialColor, svgEl (이미 클라이언트 JS)"
+          ],
+          "description": "각 렌더 함수를 Astro 컴포넌트(PredictionTable.astro, RangeChart.astro, DistributionChart.astro)로 분리한다. 계산 로직은 재작성하지 않고 그대로 옮기며, 마크업만 컴포넌트 구조로 변경한다.",
+          "files": {
+            "reuse": ["scripts/report_template.html (참고용, 삭제는 T13)"],
+            "create": [
+              "astro-app/src/components/PredictionTable.astro",
+              "astro-app/src/components/RangeChart.astro",
+              "astro-app/src/components/DistributionChart.astro"
+            ],
+            "modify": [],
+            "delete": []
+          },
+          "new_abstractions": [
+            {
+              "name": "PredictionTable/RangeChart/DistributionChart 컴포넌트",
+              "requirement": "리포트 상세에서 예측 세트별 홀짝/구간/분포 분석 표시 (US-4)",
+              "consumers": ["T11"]
+            }
+          ],
+          "validation": {
+            "tests": [
+              "동일 예측 데이터에 대해 기존 HTML 리포트와 표/차트 스크린샷 비교"
+            ],
+            "acceptance": [
+              "색상(oklch 토큰), 홀짝/구간 계산 결과가 기존과 동일"
+            ]
+          }
+        },
+        {
+          "id": "T11",
+          "name": "리포트 상세 페이지 조립",
+          "depends_on": ["T7", "T10"],
+          "inputs": [
+            "T7의 predictions 컬렉션",
+            "T10 컴포넌트"
+          ],
+          "description": "src/pages/reports/[round]/[file].astro 동적 라우트로 회차별 상세 리포트를 조립한다.",
+          "files": {
+            "reuse": [],
+            "create": ["astro-app/src/pages/reports/[round]/[file].astro"],
+            "modify": [],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "기존 reports/round_1242/lotto_report_*.html 각각에 대응하는 라우트 생성 확인"
+            ],
+            "acceptance": [
+              "US-4 인수 기준 충족 (홀짝/구간/분포 분석 표시)"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "P6",
+      "name": "CI 전환",
+      "tasks": [
+        {
+          "id": "T12",
+          "name": "GitHub Actions 워크플로우 교체",
+          "depends_on": ["T6", "T7", "T8", "T9", "T11"],
+          "inputs": [
+            ".github/workflows/lotto.yml 현재 스텝 구성"
+          ],
+          "description": "Python 스텝(pip install, pytest, collect.py, predict.py, update_readme.py, generate_report.py, build_index.py, build_dashboard.py)을 Node 스텝(npm ci, npm test, npm run build)으로 교체한다. npm run build 실행 시 T6/T7의 Content Layer loader가 자동으로 수집·예측을 수행한다. 커밋 대상 경로를 Astro 빌드 산출물 경로로 갱신한다.",
+          "files": {
+            "reuse": [],
+            "create": [],
+            "modify": [".github/workflows/lotto.yml"],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "workflow_dispatch로 수동 트리거해서 전체 파이프라인이 에러 없이 완료"
+            ],
+            "acceptance": [
+              "커밋된 산출물이 기존과 동일한 디렉터리 구조로 생성됨",
+              "매주 토요일 cron 스케줄 유지"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "P7",
+      "name": "레거시 정리",
+      "tasks": [
+        {
+          "id": "T13",
+          "name": "레거시 Python 파일 삭제",
+          "depends_on": ["T12"],
+          "inputs": [
+            "P1~P6 전체 통과 상태"
+          ],
+          "description": "scripts/predict.py, scripts/collect.py, scripts/generate_report.py, scripts/build_index.py, scripts/build_dashboard.py, scripts/report_template.html, tests/test_predict.py, tests/test_collect.py, requirements.txt를 삭제한다. scripts/analyze_recent_patterns.py와 tests/test_analyze_recent_patterns.py는 범위 밖이므로 유지한다.",
+          "files": {
+            "reuse": [],
+            "create": [],
+            "modify": [],
+            "delete": [
+              "scripts/predict.py",
+              "scripts/collect.py",
+              "scripts/generate_report.py",
+              "scripts/build_index.py",
+              "scripts/build_dashboard.py",
+              "scripts/report_template.html",
+              "tests/test_predict.py",
+              "tests/test_collect.py",
+              "requirements.txt"
+            ]
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "삭제 후 npm run build 성공",
+              "저장소 전체에서 삭제된 파일에 대한 참조 검색 결과 0건"
+            ],
+            "acceptance": [
+              "scripts/analyze_recent_patterns.py, tests/test_analyze_recent_patterns.py는 그대로 남아있음",
+              "사이트가 정상 동작"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
