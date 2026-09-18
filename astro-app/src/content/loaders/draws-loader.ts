@@ -11,7 +11,7 @@ export interface Draw {
   numbers: number[];
   date: string;
   bonusNo: number;
-  firstPrizeAmount: number;
+  firstPrizeAmount?: number;
 }
 
 interface ApiItem {
