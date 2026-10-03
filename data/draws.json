@@ -16164,5 +16164,19 @@
     ],
     "bonusNo": 35,
     "firstPrizeAmount": 2592525282
+  },
+  {
+    "drwNo": 1244,
+    "date": "2026-10-03",
+    "numbers": [
+      1,
+      13,
+      18,
+      26,
+      34,
+      38
+    ],
+    "bonusNo": 25,
+    "firstPrizeAmount": 1604686625
   }
 ]
