@@ -11,6 +11,7 @@ export const DRAWS_PATH = path.resolve(__dirname, "../../data/draws.json");
 export const PREDICTIONS_DIR = path.resolve(__dirname, "../../predictions");
 export const RULES_PATH = path.resolve(__dirname, "../../RULES.md");
 export const RULES_2_PATH = path.resolve(__dirname, "../../RULES_2.md");
+export const RULES_3_PATH = path.resolve(__dirname, "../../RULES_3.md");
 
 export function readDraws(filePath: string = DRAWS_PATH): Draw[] {
   if (!existsSync(filePath)) return [];
@@ -79,6 +80,7 @@ const predictionSchema = z.object({
   generated_at: z.string(),
   option1: predictionOptionSchema,
   option2: predictionOptionSchema.nullable(),
+  option3: predictionOptionSchema.nullable().optional(),
 });
 
 export const predictionsLoader: Loader = {
@@ -88,6 +90,7 @@ export const predictionsLoader: Loader = {
     generateAndSavePredictions(draws, {
       rulesPath: RULES_PATH,
       rules2Path: RULES_2_PATH,
+      rules3Path: RULES_3_PATH,
       outputDir: PREDICTIONS_DIR,
     });
 

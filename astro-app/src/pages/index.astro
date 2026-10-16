@@ -8,6 +8,7 @@ interface PredictionEntry {
   generated_at: string;
   predictions: number[][];
   option2: number[][] | null;
+  option3: number[][] | null;
 }
 
 const BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"];
@@ -38,6 +39,7 @@ const allPredictions: PredictionEntry[] = predictionEntries
       generated_at: e.data.generated_at,
       predictions: e.data.option1?.predictions ?? raw.predictions ?? [],
       option2: e.data.option2 ? e.data.option2.predictions : null,
+      option3: e.data.option3 ? e.data.option3.predictions : null,
     };
   })
   .sort((a, b) => (a.generated_at < b.generated_at ? 1 : a.generated_at > b.generated_at ? -1 : 0));
@@ -360,6 +362,13 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
           <ul class="pred-list" id="pred2-list"></ul>
         </section>
 
+        <section class="card" id="pred3-card" hidden>
+          <h2 class="h3" id="pred3-title">3안 예측</h2>
+          <p class="caption" style="margin:0 0 8px">목표금액 기준 임시 초안입니다. 당첨금 데이터 검증 전이며, 번호의 근거는 아직 없습니다.</p>
+          <p class="body-1" id="pred3-summary" style="margin:0 0 10px"></p>
+          <ul class="pred-list" id="pred3-list"></ul>
+        </section>
+
         <section class="card">
           <h2 class="h3">최근 5회차 당첨결과</h2>
           <ul class="recent-list">
@@ -425,6 +434,11 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
     const pred2Summary = document.getElementById('pred2-summary');
     const pred2Title = document.getElementById('pred2-title');
 
+    const pred3Card = document.getElementById('pred3-card');
+    const pred3List = document.getElementById('pred3-list');
+    const pred3Summary = document.getElementById('pred3-summary');
+    const pred3Title = document.getElementById('pred3-title');
+
     function renderPredList(listEl, predictions, actualNumbers) {
       if (actualNumbers) {
         const hitSet = new Set(actualNumbers);
@@ -474,6 +488,22 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
         renderPredList(pred2List, entry.option2, actualNumbers);
       } else {
         pred2Card.hidden = true;
+      }
+
+      if (entry.option3) {
+        pred3Card.hidden = false;
+        pred3Title.textContent = `${entry.next_draw}회차 예측 (3안)`;
+        if (actualNumbers) {
+          const hits3 = computeHits(entry.option3, actualNumbers);
+          const best3 = Math.max(...hits3);
+          const badges3 = hits3.map(h => `<span class="accuracy-badge${h === 0 ? ' dim' : ''}">${h}개</span>`).join(' ');
+          pred3Summary.innerHTML = `적중 ${badges3} · 최고 ${best3}개`;
+        } else {
+          pred3Summary.textContent = '아직 추첨 전입니다 — 결과 발표 후 적중 이력이 집계됩니다.';
+        }
+        renderPredList(pred3List, entry.option3, actualNumbers);
+      } else {
+        pred3Card.hidden = true;
       }
     }
 
