@@ -21,7 +21,7 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props;
-const { based_on_drwNo, generated_at, option1, option2 } = entry.data;
+const { based_on_drwNo, generated_at, option1, option2, option3 } = entry.data;
 const nextRound = based_on_drwNo + 1;
 
 const draws = await getCollection("draws");
@@ -53,6 +53,19 @@ const CONDITIONS_OPTION1: RangeCondition[] = [
     value: (combo) => zoneCount(combo, 30, 39) },
   { label: "40-45구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 2,
     value: (combo) => zoneCount(combo, 40, 45) },
+];
+
+const CONDITIONS_OPTION3: RangeCondition[] = [
+  { label: "합계", axisMin: 40, axisMax: 250, allowedMin: 88, allowedMax: 189,
+    value: (combo) => combo.reduce((a, b) => a + b, 0) },
+  { label: "홀수 개수", axisMin: 0, axisMax: 6, allowedMin: 1, allowedMax: 5,
+    value: (combo) => odd(combo) },
+  { label: "최대 연속", axisMin: 1, axisMax: 6, allowedMin: 1, allowedMax: 2,
+    value: (combo) => maxConsecutive(combo) },
+  { label: "1-31 구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 4,
+    value: (combo) => zoneCount(combo, 1, 31) },
+  { label: "32-45 구간 개수", axisMin: 0, axisMax: 6, allowedMin: 2, allowedMax: 6,
+    value: (combo) => zoneCount(combo, 32, 45) },
 ];
 
 const CONDITIONS_OPTION2: RangeCondition[] = [
@@ -421,6 +434,51 @@ svg .axis-line { stroke: var(--rule); stroke-width: 1; }
     </div>
     <p class="chart-note">※ 1~<span>{totalDraws}</span>회차 실제 당첨 데이터를 percentile 분석해 고정한 값이다. 회차가 새로 추가돼도 이 값 자체는 재보정 전까지 그대로 유지된다.</p>
   </section>
+
+  {option3 && (
+    <div>
+      <div class="kicker" style="margin-top:6px">DATA ANALYSIS &nbsp;/&nbsp; 3안 — 목표금액 기준 초안 (임시)</div>
+      <h1 style="font-size:19px">3안 추천 세트</h1>
+      <p class="subtitle">RULES_3.md 기준. 당첨금 데이터 검증 전 임시 초안이다. 생일 번호(1~31) 쏠림을 줄이고 연속 번호를 피하는 조건만 적용했으며, 목표금액 효과는 아직 검증되지 않았다.</p>
+
+      <section>
+        <h2><span class="roman">Ⅰ.</span> 3안 추천 세트</h2>
+        <p class="section-desc">세트별 번호와 핵심 수치</p>
+        <PredictionTable predictions={option3.predictions} />
+        <p class="chart-note">※ 구간분포는 1-9·10-19·20-29·30-39·40-45 순서로 각 구간에 포함된 번호 개수다.</p>
+      </section>
+
+      <section>
+        <h2><span class="roman">Ⅱ.</span> 왜 이 번호들인가 — 조건별 허용범위 대비 위치</h2>
+        <p class="section-desc">조건별 허용범위 대비 각 세트의 실제 값</p>
+        <RangeChart predictions={option3.predictions} conditions={CONDITIONS_OPTION3} />
+        <p class="chart-note">※ 회색 막대 = 조건별 허용범위, 점 = 각 세트의 실제 값. 점이 막대 안에 있으면 그 조건을 통과했다는 뜻이다.</p>
+      </section>
+
+      <section>
+        <h2><span class="roman">Ⅲ.</span> 번호 분포</h2>
+        <p class="section-desc">번호별 등장 횟수</p>
+        <DistributionChart predictions={option3.predictions} />
+        <p class="chart-note">※ 가로축은 번호(1~45), 세로축은 3안 추천 세트 중 그 번호가 뽑힌 횟수다. 색상은 공식 번호 구간 색상을 따른다.</p>
+      </section>
+
+      <section>
+        <h2><span class="roman">Ⅳ.</span> 조건의 근거</h2>
+        <p class="section-desc">RULES_3.md에 적은 조건. 근거는 추정이며 데이터 검증 전이다</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>조건</th><th>값</th><th style="text-align:right">비고</th></tr></thead>
+            <tbody>
+              <tr><td>consecutive_max (최대 연속)</td><td class="new">2</td><td class="num">1안(3)보다 엄격 — 규칙적 패턴 회피</td></tr>
+              <tr><td>zone 1-31 (구간 개수)</td><td class="new">min 0 max 4</td><td class="num">생일 번호 쏠림 제한</td></tr>
+              <tr><td>zone 32-45 (구간 개수)</td><td class="new">min 2 max 6</td><td class="num">1~31 쏠림의 반대 방향 보정</td></tr>
+              <tr><td>freq 가중치</td><td class="new">0 / 0</td><td class="num">출현 빈도 미반영 (균등 가중)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  )}
 
   {option2 && (
     <div>

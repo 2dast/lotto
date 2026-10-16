@@ -14,6 +14,7 @@ import type { Draw } from "../../lib/lotto/score";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REAL_RULES_PATH = path.resolve(__dirname, "../../../../RULES.md");
 const REAL_RULES_2_PATH = path.resolve(__dirname, "../../../../RULES_2.md");
+const REAL_RULES_3_PATH = path.resolve(__dirname, "../../../../RULES_3.md");
 
 function makeDraws(count: number): Draw[] {
   const draws: Draw[] = [];
@@ -92,6 +93,25 @@ describe("generateAndSavePredictions", () => {
       outputDir,
     });
     expect(result.option2).toBeNull();
+  });
+
+  it("generates option3 from rules3Path and sets it to null when omitted", () => {
+    const draws = makeDraws(30);
+    const withThird = generateAndSavePredictions(draws, {
+      rulesPath: REAL_RULES_PATH,
+      rules2Path: REAL_RULES_2_PATH,
+      rules3Path: REAL_RULES_3_PATH,
+      outputDir: tempDir(),
+    });
+    expect(withThird.option3).not.toBeNull();
+    expect(withThird.option3!.predictions.length).toBeGreaterThan(0);
+
+    const withoutThird = generateAndSavePredictions(draws, {
+      rulesPath: REAL_RULES_PATH,
+      rules2Path: REAL_RULES_2_PATH,
+      outputDir: tempDir(),
+    });
+    expect(withoutThird.option3).toBeNull();
   });
 });
 

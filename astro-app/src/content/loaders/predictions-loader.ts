@@ -13,6 +13,7 @@ export interface PredictionSet {
   generated_at: string;
   option1: PredictionOption;
   option2: PredictionOption | null;
+  option3?: PredictionOption | null;
 }
 
 export function generateOption(rulesPath: string, draws: Draw[]): PredictionOption | null {
@@ -27,17 +28,19 @@ export function generateOption(rulesPath: string, draws: Draw[]): PredictionOpti
 export interface GenerateAndSaveOptions {
   rulesPath: string;
   rules2Path: string;
+  rules3Path?: string;
   outputDir: string;
 }
 
 export function generateAndSavePredictions(draws: Draw[], options: GenerateAndSaveOptions): PredictionSet {
-  const { rulesPath, rules2Path, outputDir } = options;
+  const { rulesPath, rules2Path, rules3Path, outputDir } = options;
 
   const option1 = generateOption(rulesPath, draws);
   if (option1 === null) {
     throw new Error(`${rulesPath} 파일이 없습니다`);
   }
   const option2 = generateOption(rules2Path, draws);
+  const option3 = rules3Path ? generateOption(rules3Path, draws) : null;
 
   const lastDrwNo = draws.reduce((max, d) => Math.max(max, d.drwNo), 0);
 
@@ -58,6 +61,7 @@ export function generateAndSavePredictions(draws: Draw[], options: GenerateAndSa
     generated_at: generatedAt,
     option1,
     option2,
+    option3,
   };
 
   const nextDraw = lastDrwNo + 1;
@@ -80,6 +84,7 @@ function normalizeLegacyShape(raw: unknown): PredictionSet {
       generated_at: obj.generated_at as string,
       option1: { predictions: obj.predictions as number[][] },
       option2: null,
+      option3: null,
     };
   }
   return raw as PredictionSet;
