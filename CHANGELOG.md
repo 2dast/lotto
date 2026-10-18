@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/2dast/lotto/compare/v1.1.0...v1.1.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **lotto:** 수집 재시도 및 최신 회차 검증 스텝 추가 ([152be69](https://github.com/2dast/lotto/commit/152be690e71a707dcc06ec1117862f36ff5c725d))
+* **lotto:** 수집 재시도 및 최신 회차 검증 스텝 추가 ([0655d07](https://github.com/2dast/lotto/commit/0655d07acbfa45eed86c8a70ee6a0aa919e0e5f3))
+
 ## [1.1.0](https://github.com/2dast/lotto/compare/v1.0.0...v1.1.0) (2026-10-16)
 
 
