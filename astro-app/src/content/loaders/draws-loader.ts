@@ -5,6 +5,8 @@ const HEADERS = {
 };
 const PAGE_SIZE = 10;
 const TIMEOUT_MS = 10_000;
+const MAX_ATTEMPTS = 3;
+const RETRY_BASE_MS = 500;
 
 export interface Draw {
   drwNo: number;
@@ -27,17 +29,29 @@ interface ApiItem {
   rnk1WnAmt: number;
 }
 
-async function fetchList(params: Record<string, string>): Promise<ApiItem[]> {
-  const url = new URL(API_URL);
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, value);
-  }
+async function fetchListOnce(url: URL): Promise<ApiItem[]> {
   const resp = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!resp.ok) {
     throw new Error(`API request failed with status ${resp.status}`);
   }
   const body = await resp.json();
   return body?.data?.list ?? [];
+}
+
+async function fetchList(params: Record<string, string>): Promise<ApiItem[]> {
+  const url = new URL(API_URL);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetchListOnce(url);
+    } catch (err) {
+      if (attempt >= MAX_ATTEMPTS) throw err;
+      console.warn(`동행복권 API 요청 실패 (${attempt}/${MAX_ATTEMPTS}), 재시도합니다:`, err);
+      await new Promise((resolve) => setTimeout(resolve, RETRY_BASE_MS * attempt));
+    }
+  }
 }
 
 export function fetchOlderPage(cursor: number): Promise<ApiItem[]> {

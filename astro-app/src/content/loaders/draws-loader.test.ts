@@ -150,6 +150,44 @@ describe("collectNewDraws", () => {
   });
 });
 
+describe("fetchList retry", () => {
+  it("retries a failed request and returns the data once a later attempt succeeds", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("temporary"))
+      .mockResolvedValueOnce(jsonResponse({ data: { list: [makeItem(1200, "20240201")] } }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const list = await fetchCenter(1200);
+    expect(list).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up after 3 attempts and rethrows the last error", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({}, false));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(fetchCenter(1200)).rejects.toThrow("status");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("retries when the body is not JSON", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => {
+          throw new SyntaxError("Unexpected token '<'");
+        },
+      })
+      .mockResolvedValueOnce(jsonResponse({ data: { list: [makeItem(1200, "20240201")] } }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(await fetchCenter(1200)).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("loadDrawsWithUpdates", () => {
   const existing: Draw[] = [
     { drwNo: 1100, date: "2024-01-01", numbers: [1, 2, 3, 4, 5, 6], bonusNo: 7, firstPrizeAmount: 1 },
