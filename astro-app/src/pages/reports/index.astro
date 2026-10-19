@@ -292,19 +292,28 @@ themeBtns.forEach(btn => btn.addEventListener('click', toggleTheme));
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeButtons);
 viewer.addEventListener('load', syncIframeTheme);
 
+// 모바일에서 닫힌 드로어는 화면 밖에 있으므로 Tab 포커스와 스크린리더 탐색에서 제외한다
+const mobileMq = window.matchMedia('(max-width: 768px)');
+function syncSidebarInert() {
+  sidebar.inert = mobileMq.matches && !sidebar.classList.contains('is-open');
+}
+mobileMq.addEventListener('change', syncSidebarInert);
 function closeSidebar() {
   const wasOpen = sidebar.classList.contains('is-open');
   sidebar.classList.remove('is-open');
   sidebarBackdrop.classList.remove('is-open');
   menuBtn.setAttribute('aria-expanded', 'false');
+  syncSidebarInert();
   if (wasOpen) menuBtn.focus();
 }
 menuBtn.addEventListener('click', () => {
   const open = sidebar.classList.toggle('is-open');
   sidebarBackdrop.classList.toggle('is-open', open);
   menuBtn.setAttribute('aria-expanded', String(open));
+  syncSidebarInert();
   if (open) sidebar.querySelector('.draw-header')?.focus();
 });
+syncSidebarInert();
 sidebarBackdrop.addEventListener('click', closeSidebar);
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && sidebar.classList.contains('is-open')) closeSidebar();
