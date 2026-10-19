@@ -56,13 +56,15 @@ const charts = conditions.map((cond) => {
     allowedW,
     rangeLabelX: (allowedX + allowedX + allowedW) / 2,
     rangeLabelText: `허용 ${cond.allowedMin}~${cond.allowedMax}`,
+    ariaLabel: `${cond.label} 허용 ${cond.allowedMin}~${cond.allowedMax}. ` +
+      predictions.map((_, i) => `세트 ${i + 1} ${values[i]}`).join(", "),
     points,
   };
 });
 ---
 <div class="range-charts">
   {charts.map((chart) => (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img" aria-label={chart.ariaLabel}>
       <text x="0" y={trackY + trackH / 2 + 4} text-anchor="start">{chart.label}</text>
       <rect x={padL} y={trackY} width={plotW} height={trackH} rx="4" class="range-track" />
       <rect x={chart.allowedX} y={trackY} width={chart.allowedW} height={trackH} rx="4" class="range-allowed" />

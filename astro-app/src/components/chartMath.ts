@@ -2,6 +2,8 @@
 // Kept framework-agnostic (no DOM) so they can run at Astro build time and be
 // unit-tested directly with vitest.
 
+import { ballZoneIndex } from "../lib/lotto/ballZone";
+
 export function odd(combo: number[]): number {
   return combo.filter((n) => n % 2 === 1).length;
 }
@@ -22,12 +24,10 @@ export function zoneCount(combo: number[], lo: number, hi: number): number {
 }
 
 // 동행복권 공식 번호 구간 색상: 1-10 노랑, 11-20 파랑, 21-30 빨강, 31-40 회색, 41-45 초록
+const OFFICIAL_COLORS = ["#fbc400", "#69c8f2", "#ff7272", "#aaaaaa", "#b0d840"];
+
 export function officialColor(n: number): string {
-  if (n <= 10) return "#fbc400";
-  if (n <= 20) return "#69c8f2";
-  if (n <= 30) return "#ff7272";
-  if (n <= 40) return "#aaaaaa";
-  return "#b0d840";
+  return OFFICIAL_COLORS[ballZoneIndex(n)];
 }
 
 export const ZONE_RANGES: readonly [number, number][] = [

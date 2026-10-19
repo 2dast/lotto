@@ -36,22 +36,25 @@ function maxOverlap(predictions: number[][]): number {
   return Math.max(...counts, 1);
 }
 
-const CONDITIONS_OPTION1: RangeCondition[] = [
-  { label: "합계", axisMin: 40, axisMax: 250, allowedMin: 88, allowedMax: 189,
+// 1안 조건은 차트와 "조건의 근거" 표가 함께 쓰므로 표 항목명(key)과 근거(basis)를 같이 둔다.
+type ConditionRow = RangeCondition & { key: string; basis: string };
+
+const CONDITIONS_OPTION1: ConditionRow[] = [
+  { key: "sum (6개 합계)", basis: "5~95pct", label: "합계", axisMin: 40, axisMax: 250, allowedMin: 88, allowedMax: 189,
     value: (combo) => combo.reduce((a, b) => a + b, 0) },
-  { label: "홀수 개수", axisMin: 0, axisMax: 6, allowedMin: 1, allowedMax: 5,
+  { key: "odd_even (홀수 개수)", basis: "5~95pct", label: "홀수 개수", axisMin: 0, axisMax: 6, allowedMin: 1, allowedMax: 5,
     value: (combo) => odd(combo) },
-  { label: "최대 연속", axisMin: 1, axisMax: 6, allowedMin: 1, allowedMax: 3,
+  { key: "consecutive_max (최대 연속)", basis: "95pct", label: "최대 연속", axisMin: 1, axisMax: 6, allowedMin: 1, allowedMax: 3,
     value: (combo) => maxConsecutive(combo) },
-  { label: "1-9구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
+  { key: "zone 1-9 (구간 개수)", basis: "5~95pct", label: "1-9구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
     value: (combo) => zoneCount(combo, 1, 9) },
-  { label: "10-19구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
+  { key: "zone 10-19 (구간 개수)", basis: "5~95pct", label: "10-19구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
     value: (combo) => zoneCount(combo, 10, 19) },
-  { label: "20-29구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
+  { key: "zone 20-29 (구간 개수)", basis: "5~95pct", label: "20-29구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
     value: (combo) => zoneCount(combo, 20, 29) },
-  { label: "30-39구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
+  { key: "zone 30-39 (구간 개수)", basis: "5~95pct", label: "30-39구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
     value: (combo) => zoneCount(combo, 30, 39) },
-  { label: "40-45구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 2,
+  { key: "zone 40-45 (구간 개수)", basis: "평균 0.80개", label: "40-45구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 2,
     value: (combo) => zoneCount(combo, 40, 45) },
 ];
 
@@ -96,6 +99,14 @@ const overlap1 = maxOverlap(option1.predictions);
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{nextRound}회차 로또 추천 번호 스크리닝 리포트</title>
+<script is:inline>
+(function () {
+  try {
+    const saved = localStorage.getItem("lotto-theme");
+    if (saved === "dark" || saved === "light") document.documentElement.dataset.theme = saved;
+  } catch (e) {}
+})();
+</script>
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style is:global>
 /* is:global: PredictionTable/RangeChart/DistributionChart (T10) render markup that Astro's
@@ -120,8 +131,10 @@ const overlap1 = maxOverlap(option1.predictions);
   --set-1: #2a78d6; --set-2: #eb6834; --set-3: #1baf7a; --set-4: #eda100; --set-5: #e87ba4;
   --set-6: #4a3aa7; --set-7: #008300; --set-8: #e34948;
 }
+/* 다크 토큰: 사용자가 data-theme="dark"를 골랐거나, 테마를 고르지 않았고 OS가 다크일 때 적용한다.
+   data-theme="light"이면 OS 설정과 무관하게 라이트 토큰을 쓴다. */
 @media (prefers-color-scheme: dark) {
-  .viz-root{
+  :root:not([data-theme="light"]) .viz-root{
     color-scheme: dark;
     --bg:            #16171a;
     --paper:         #1d1e21;
@@ -139,6 +152,24 @@ const overlap1 = maxOverlap(option1.predictions);
     --set-1: #3987e5; --set-2: #d95926; --set-3: #199e70; --set-4: #c98500; --set-5: #d55181;
     --set-6: #9085e9; --set-7: #008300; --set-8: #e66767;
   }
+}
+:root[data-theme="dark"] .viz-root{
+  color-scheme: dark;
+  --bg:            #16171a;
+  --paper:         #1d1e21;
+  --surface-2:     #232428;
+  --border:        #35363a;
+  --rule:          #e8e7e2;
+  --text-primary:  #ecebe6;
+  --text-secondary:#b7b6ac;
+  --text-muted:    #85847a;
+  --navy:          #6f8fb8;
+  --navy-soft:     #24344a;
+  --up:            #d9736b;
+  --down:          #4fa688;
+  --band:          #4a463c;
+  --set-1: #3987e5; --set-2: #d95926; --set-3: #199e70; --set-4: #c98500; --set-5: #d55181;
+  --set-6: #9085e9; --set-7: #008300; --set-8: #e66767;
 }
 
 * { box-sizing: border-box; }
@@ -270,7 +301,7 @@ h1 {
 .summary-box b { color: var(--navy); }
 
 section { margin-bottom: 30px; }
-h2 {
+h2, h3 {
   font-size: 14px;
   font-weight: 700;
   color: var(--text-primary);
@@ -281,7 +312,8 @@ h2 {
   align-items: baseline;
   gap: 6px;
 }
-h2 .roman { color: var(--navy); font-size: 13px; }
+h2 .roman, h3 .roman { color: var(--navy); font-size: 13px; }
+h2.block-title { font-size: 19px; border-bottom: none; padding-bottom: 0; margin: 0 0 6px; }
 .section-desc {
   font-size: 12px;
   color: var(--text-secondary);
@@ -313,6 +345,7 @@ th {
   font-weight: 700;
   font-size: 10.5px;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 td.num { font-variant-numeric: tabular-nums; text-align: right; color: var(--text-primary); }
 td.new { color: var(--down); font-weight: 700; }
@@ -421,14 +454,9 @@ svg .axis-line { stroke: var(--rule); stroke-width: 1; }
       <table>
         <thead><tr><th>조건</th><th>값</th><th style="text-align:right">근거</th></tr></thead>
         <tbody>
-          <tr><td>odd_even (홀수 개수)</td><td class="new">1 5</td><td class="num">5~95pct</td></tr>
-          <tr><td>sum (6개 합계)</td><td class="new">88 189</td><td class="num">5~95pct</td></tr>
-          <tr><td>consecutive_max (최대 연속)</td><td class="new">3</td><td class="num">95pct</td></tr>
-          <tr><td>zone 1-9 (구간 개수)</td><td class="new">min 0 max 3</td><td class="num">5~95pct</td></tr>
-          <tr><td>zone 10-19 (구간 개수)</td><td class="new">min 0 max 3</td><td class="num">5~95pct</td></tr>
-          <tr><td>zone 20-29 (구간 개수)</td><td class="new">min 0 max 3</td><td class="num">5~95pct</td></tr>
-          <tr><td>zone 30-39 (구간 개수)</td><td class="new">min 0 max 3</td><td class="num">5~95pct</td></tr>
-          <tr><td>zone 40-45 (구간 개수)</td><td class="new">min 0 max 2</td><td class="num">평균 0.80개</td></tr>
+          {CONDITIONS_OPTION1.map((c) => (
+            <tr><td>{c.key}</td><td class="new">{c.allowedMin}~{c.allowedMax}</td><td class="num">{c.basis}</td></tr>
+          ))}
         </tbody>
       </table>
     </div>
@@ -437,34 +465,34 @@ svg .axis-line { stroke: var(--rule); stroke-width: 1; }
 
   {option3 && (
     <div>
-      <div class="kicker" style="margin-top:6px">DATA ANALYSIS &nbsp;/&nbsp; 3안 — 목표금액 기준 초안 (임시)</div>
-      <h1 style="font-size:19px">3안 추천 세트</h1>
-      <p class="subtitle">RULES_3.md 기준. 당첨금 데이터 검증 전 임시 초안이다. 생일 번호(1~31) 쏠림을 줄이고 연속 번호를 피하는 조건만 적용했으며, 목표금액 효과는 아직 검증되지 않았다.</p>
+      <div class="kicker" style="margin-top:6px">DATA ANALYSIS &nbsp;/&nbsp; 3안</div>
+      <h2 class="block-title">3안 추천 세트</h2>
+      <p class="subtitle">생일 번호(1~31) 쏠림을 줄이고 연속 번호를 피하는 조건을 적용한 세트다.</p>
 
       <section>
-        <h2><span class="roman">Ⅰ.</span> 3안 추천 세트</h2>
+        <h3><span class="roman">Ⅰ.</span> 3안 추천 세트</h3>
         <p class="section-desc">세트별 번호와 핵심 수치</p>
         <PredictionTable predictions={option3.predictions} />
         <p class="chart-note">※ 구간분포는 1-9·10-19·20-29·30-39·40-45 순서로 각 구간에 포함된 번호 개수다.</p>
       </section>
 
       <section>
-        <h2><span class="roman">Ⅱ.</span> 왜 이 번호들인가 — 조건별 허용범위 대비 위치</h2>
+        <h3><span class="roman">Ⅱ.</span> 왜 이 번호들인가 — 조건별 허용범위 대비 위치</h3>
         <p class="section-desc">조건별 허용범위 대비 각 세트의 실제 값</p>
         <RangeChart predictions={option3.predictions} conditions={CONDITIONS_OPTION3} />
         <p class="chart-note">※ 회색 막대 = 조건별 허용범위, 점 = 각 세트의 실제 값. 점이 막대 안에 있으면 그 조건을 통과했다는 뜻이다.</p>
       </section>
 
       <section>
-        <h2><span class="roman">Ⅲ.</span> 번호 분포</h2>
+        <h3><span class="roman">Ⅲ.</span> 번호 분포</h3>
         <p class="section-desc">번호별 등장 횟수</p>
         <DistributionChart predictions={option3.predictions} />
         <p class="chart-note">※ 가로축은 번호(1~45), 세로축은 3안 추천 세트 중 그 번호가 뽑힌 횟수다. 색상은 공식 번호 구간 색상을 따른다.</p>
       </section>
 
       <section>
-        <h2><span class="roman">Ⅳ.</span> 조건의 근거</h2>
-        <p class="section-desc">RULES_3.md에 적은 조건. 근거는 추정이며 데이터 검증 전이다</p>
+        <h3><span class="roman">Ⅳ.</span> 조건의 근거</h3>
+        <p class="section-desc">3안에 적용한 조건과 그 근거. 근거는 추정이다</p>
         <div class="table-scroll">
           <table>
             <thead><tr><th>조건</th><th>값</th><th style="text-align:right">비고</th></tr></thead>
@@ -483,32 +511,32 @@ svg .axis-line { stroke: var(--rule); stroke-width: 1; }
   {option2 && (
     <div>
       <div class="kicker" style="margin-top:6px">DATA ANALYSIS &nbsp;/&nbsp; 2안 — 1안과 반대 방향 베팅</div>
-      <h1 style="font-size:19px">2안 추천 세트</h1>
-      <p class="subtitle">RULES_2.md 기준. 1안과 상관관계를 낮추기 위해 40-45구간 배제·1-9구간 강제·콜드넘버 우대 조건을 적용한 별도 세트.</p>
+      <h2 class="block-title">2안 추천 세트</h2>
+      <p class="subtitle">1안과 상관관계를 낮추기 위해 40-45구간 배제·1-9구간 강제·콜드넘버 우대 조건을 적용한 별도 세트.</p>
 
       <section>
-        <h2><span class="roman">Ⅰ.</span> 2안 추천 세트</h2>
+        <h3><span class="roman">Ⅰ.</span> 2안 추천 세트</h3>
         <p class="section-desc">세트별 번호와 핵심 수치</p>
         <PredictionTable predictions={option2.predictions} />
         <p class="chart-note">※ 구간분포는 1-9·10-19·20-29·30-39·40-45 순서로 각 구간에 포함된 번호 개수다.</p>
       </section>
 
       <section>
-        <h2><span class="roman">Ⅱ.</span> 왜 이 번호들인가 — 조건별 허용범위 대비 위치</h2>
+        <h3><span class="roman">Ⅱ.</span> 왜 이 번호들인가 — 조건별 허용범위 대비 위치</h3>
         <p class="section-desc">조건별 허용범위 대비 각 세트의 실제 값</p>
         <RangeChart predictions={option2.predictions} conditions={CONDITIONS_OPTION2} />
         <p class="chart-note">※ 회색 막대 = 조건별 허용범위, 점 = 각 세트의 실제 값. 점이 막대 안에 있으면 그 조건을 통과했다는 뜻이다.</p>
       </section>
 
       <section>
-        <h2><span class="roman">Ⅲ.</span> 번호 분포</h2>
+        <h3><span class="roman">Ⅲ.</span> 번호 분포</h3>
         <p class="section-desc">번호별 등장 횟수</p>
         <DistributionChart predictions={option2.predictions} />
         <p class="chart-note">※ 가로축은 번호(1~45), 세로축은 2안 추천 세트 중 그 번호가 뽑힌 횟수다. 색상은 공식 번호 구간 색상을 따른다.</p>
       </section>
 
       <section>
-        <h2><span class="roman">Ⅳ.</span> 조건의 근거</h2>
+        <h3><span class="roman">Ⅳ.</span> 조건의 근거</h3>
         <p class="section-desc">1안과 다른 조건만 표시 — 그 외(홀짝·합계·최대연속·중간구간)는 1안과 동일</p>
         <div class="table-scroll">
           <table>
