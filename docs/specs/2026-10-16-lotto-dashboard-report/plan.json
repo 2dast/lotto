@@ -1,0 +1,134 @@
+{
+  "feature": "lotto-dashboard-report",
+  "spec": "docs/specs/2026-10-16-lotto-dashboard-report/design.md",
+  "goal": "Show the 1/2/3 prediction sets side by side on the dashboard (3-column, single column under 768px) and reduce the report to comparison table and recommended sets, without showing rule file names.",
+  "preserved_behavior": [
+    "Prediction generation and predictions/ file format are unchanged",
+    "data/draws.json and RULES*.md are not modified",
+    "Recent 5-round results section keeps its current data source",
+    "Disclaimer text remains on both pages",
+    "Existing vitest suite (74 tests) continues to pass"
+  ],
+  "phases": [
+    {
+      "id": "P1",
+      "name": "Dashboard 3-column cards",
+      "tasks": [
+        {
+          "id": "T1",
+          "name": "Render 1/2/3 cards in a 3-column grid without rule file names",
+          "depends_on": [],
+          "inputs": [
+            "design.md Layout section (dashboard C안) and Responsive section (768px breakpoint)",
+            "index.astro already renders option2 and option3 cards (pred2-card, pred3-card) with an option3 hidden fallback",
+            "Root design.md tokens: ball colors by zone, radius 12px cards, 16px gap, 24px page padding"
+          ],
+          "description": "Replace the stacked dashboard card layout with a grid of three equal cards (1안, 2안, 3안). Each card shows the set name, a one-line description and five sets of number balls. Remove any rule file name (RULES*.md) from cards. Keep the existing tabular-nums and zone colors. Under 768px, stack the cards in one column. Keep the existing summary bar, recent 5-round section and footnote. Do not change how option1/option2/option3 are loaded.",
+          "files": {
+            "reuse": [
+              "astro-app/src/content.config.ts",
+              "astro-app/src/content/loaders/predictions-loader.ts"
+            ],
+            "create": [],
+            "modify": [
+              "astro-app/src/pages/index.astro"
+            ],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "vitest run passes all existing tests",
+              "Dashboard markup contains three card containers and no RULES*.md text"
+            ],
+            "acceptance": [
+              "AC-1: three cards are shown in one page, three columns at 768px and wider",
+              "AC-2: under 768px cards stack in one column and the page has no horizontal scroll",
+              "AC-5: zone colors follow the number range rule; yellow ball text stays dark in dark mode",
+              "AC-6: no provisional-draft warning text is shown",
+              "AC-7: disclaimer is shown",
+              "AC-9: no RULES*.md file name is shown on the dashboard"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "name": "Report reduced to comparison and recommended sets",
+      "tasks": [
+        {
+          "id": "T2",
+          "name": "Keep only comparison table and recommended sets in the report",
+          "depends_on": [],
+          "inputs": [
+            "design.md Layout section (report: 1. 조건 비교, 2. 추천 세트)",
+            "[file].astro already has condition tables and option1/2/3 sections",
+            "Comparison table content is approved as-is; only headers change to 1안/2안/3안"
+          ],
+          "description": "Remove the method, backtest, interpretation and conclusion sections from the report page. Keep the comparison table as section 1 with headers 1안, 2안, 3안 (no file names). Rename the section for sets to 추천 세트 and show each set with number balls and the zone distribution column. Keep the header title and the disclaimer. Remove the provisional-draft warning text.",
+          "files": {
+            "reuse": [
+              "astro-app/src/components/PredictionTable.astro",
+              "astro-app/src/components/chartMath.ts"
+            ],
+            "create": [],
+            "modify": [
+              "astro-app/src/pages/reports/[round]/[file].astro"
+            ],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "vitest run passes all existing tests",
+              "Report markup contains only the two sections 조건 비교 and 추천 세트"
+            ],
+            "acceptance": [
+              "AC-3: the report has only the comparison table and recommended sets",
+              "AC-4: recommended sets show number balls and the zone distribution",
+              "AC-6: no provisional-draft warning text is shown",
+              "AC-7: disclaimer is shown",
+              "AC-9: no RULES*.md file name appears in the report headers or titles"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "P3",
+      "name": "Verification",
+      "tasks": [
+        {
+          "id": "T3",
+          "name": "Run the test suite and check the rendered output without building",
+          "depends_on": ["T1", "T2"],
+          "inputs": [
+            "Tasks T1 and T2 are complete",
+            "Build is not run: astro build calls the external draws API and writes predictions/",
+            "Browser check uses a static preview under scratchpad, not the repo"
+          ],
+          "description": "Run the full vitest suite. Check the changed pages for RULES*.md text and for the removed sections. Confirm that git status shows only the intended files changed. Report any gap that cannot be checked without a build, such as the Astro compile step and mobile layout in a real browser.",
+          "files": {
+            "reuse": [],
+            "create": [],
+            "modify": [],
+            "delete": []
+          },
+          "new_abstractions": [],
+          "validation": {
+            "tests": [
+              "vitest run: all tests pass",
+              "grep for RULES in the changed pages returns no display text"
+            ],
+            "acceptance": [
+              "AC-8: all existing tests pass (74 in the baseline)",
+              "git status shows only the planned files changed",
+              "Unverified items (Astro compile, mobile browser check) are reported to the human"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

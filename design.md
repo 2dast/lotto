@@ -371,8 +371,8 @@ product-facing 색은 시맨틱 alias(`{colors.fill-brand}`, `{colors.text-prima
 
 리포트·대시보드·일반 페이지 모두 **데스크톱/모바일 겸용 단일 컬럼** 기준으로 둔다. 별도 breakpoint 토큰 표는 두지 않고, 아래 원칙만 따른다.
 
-- **Mobile (≤ 640px)**: `{component.top-nav}`는 그대로 고정, `filter-chip` 목록은 가로 스크롤. 카드(`summary-card`, `trend-chart`)는 1열.
-- **Desktop (> 640px)**: 카드가 2열 그리드로 확장될 수 있으나, `number-ball`·`track-row` 등 표 형태 컴포넌트는 계속 단일 컬럼(가독성 우선).
+- **Mobile (≤ 768px)**: `{component.top-nav}`는 그대로 고정, `filter-chip` 목록은 가로 스크롤. 카드(`summary-card`, `trend-chart`)는 1열.
+- **Desktop (> 768px)**: 카드가 최대 3열 그리드로 확장될 수 있으나, `number-ball`·`track-row` 등 표 형태 컴포넌트는 계속 단일 컬럼(가독성 우선).
 - **Touch target**: 모든 `button`·`filter-chip`은 최소 32px 높이를 유지해 터치 오차를 줄인다.
 
 ## Known Gaps
