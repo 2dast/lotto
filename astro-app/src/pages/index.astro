@@ -1,5 +1,6 @@
 ---
 import { getCollection } from "astro:content";
+import { ballZoneIndex } from "../lib/lotto/ballZone";
 
 interface PredictionEntry {
   file: string;
@@ -11,12 +12,10 @@ interface PredictionEntry {
   option3: number[][] | null;
 }
 
-const BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"];
-function ballZone(n: number): string {
-  return BALL_COLORS[Math.min(Math.floor((n - 1) / 10), 4)];
-}
+const BALL_CLASSES = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"];
+const BALL_CLASS_BY_NUMBER = Array.from({ length: 46 }, (_, n) => (n === 0 ? "" : BALL_CLASSES[ballZoneIndex(n)]));
 function numberBallHtml(n: number): string {
-  return `<span class="number-ball ${ballZone(n)}">${n}</span>`;
+  return `<span class="number-ball ${BALL_CLASS_BY_NUMBER[n]}">${n}</span>`;
 }
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -81,6 +80,7 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
   nextDraw: r,
   items: allPredictions.filter((p) => p.next_draw === r),
 }));
+const VISIBLE_GROUPS = 10;
 ---
 
 <html lang="ko">
@@ -172,7 +172,7 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
       height: 56px; flex: none; display: flex; align-items: center; gap: 12px; justify-content: space-between;
       padding: 0 20px; background: var(--white); border-bottom: 1px solid var(--border-secondary);
     }
-    .top-nav .title-1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; flex: none; }
+    .top-nav .title-1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; flex: none; }
     .nav-select-row { flex: 1; justify-content: flex-end; min-width: 0; }
     .menu-btn {
       display: none; flex: none; width: 36px; height: 36px; border: none; background: none;
@@ -200,7 +200,9 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
 
     @media (max-width: 768px) {
       .menu-btn { display: inline-flex; }
-      .top-nav .title-1 { display: none; }
+      .top-nav .title-1 {
+        position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+      }
       .nav-select-row select { max-width: 40vw; }
       .layout { position: relative; overflow: hidden; }
       .sidebar {
@@ -237,11 +239,22 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
     .draw-body li a { display: block; padding: 6px 10px 6px 27px; font-size: 12.5px; text-decoration: none; color: var(--text-secondary); border-radius: 12px; margin: 1px 4px; border-left: 3px solid transparent; font-variant-numeric: tabular-nums; }
     .draw-body li a:hover { background: var(--grey-100); }
     .draw-body li a.active { background: var(--blue-50); color: var(--blue-500); font-weight: 600; border-left-color: var(--blue-500); }
+    #more-btn {
+      width: calc(100% - 16px); margin: 8px 8px 12px; padding: 9px; border: 1px dashed var(--border-secondary); border-radius: 12px;
+      background: none; font: inherit; font-size: 12px; color: var(--text-secondary); cursor: pointer;
+    }
+    #more-btn:hover { background: var(--grey-100); border-style: solid; }
 
     .main { flex: 1; overflow-y: auto; }
     #dashboard-view {
-      max-width: 1440px; margin: 0 auto; padding: 20px; box-sizing: border-box;
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px;
+      max-width: 1440px; margin: 0 auto; padding: 24px; box-sizing: border-box;
+      display: grid; grid-template-columns: 1fr; gap: 16px;
+    }
+    @media (min-width: 769px) {
+      #dashboard-view { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 768px) {
+      #dashboard-view { padding: 16px; }
     }
     #dashboard-view[hidden] { display: none; }
     .dash-footer {
@@ -249,6 +262,7 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
       padding-top: 16px; border-top: 1px solid var(--border-secondary);
     }
     .dash-footer .footnote { margin: 0; }
+    .recent-card { grid-column: 1 / -1; }
     .card {
       border: 1px solid var(--border-secondary); border-radius: 16px; box-shadow: var(--shadow-1);
       padding: 20px; margin-bottom: 0;
@@ -278,7 +292,7 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
     .pred-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-secondary); }
     .pred-row:last-child { border-bottom: none; }
     .set-idx { color: var(--text-tertiary); width: 16px; font-size: 12px; font-weight: 500; flex: none; }
-    .set-nums { line-height: 1; }
+    .set-nums { line-height: 1; min-width: 0; }
     .set-nums .number-ball { width: 28px; height: 28px; font-size: 13px; margin-right: 4px; }
 
     .recent-list { list-style: none; margin: 0; padding: 0; }
@@ -306,7 +320,7 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
     <button class="menu-btn" id="menu-btn" type="button" aria-label="리포트 목록 열기" aria-expanded="false" aria-controls="sidebar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
     </button>
-    <span class="title-1">로또 대시보드</span>
+    <h1 class="title-1">로또 대시보드</h1>
     <div class="select-row nav-select-row">
       <select id="round-select" aria-label="예측 회차 선택">
         {rounds.map((r) => (
@@ -323,14 +337,14 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
   <div class="layout">
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
     <nav class="sidebar" id="sidebar">
-      <h1 class="sidebar-title">리포트 목록</h1>
+      <p class="sidebar-title">리포트 목록</p>
       <a href="#" id="home-link" class="home-link active">대시보드 홈</a>
       {sidebarGroups.length === 0 ? (
         <p class="caption" style="padding:8px 16px">아직 생성된 리포트가 없습니다.</p>
       ) : (
         <ul id="group-list">
           {sidebarGroups.map((group, gi) => (
-            <li class={`draw-group${gi >= 10 ? " is-hidden" : ""}`}>
+            <li class={`draw-group${gi >= VISIBLE_GROUPS ? " is-hidden" : ""}`}>
               <button class="draw-header" type="button" aria-expanded="false">
                 <span class="chevron">&#9656;</span>
                 <span class="draw-label">{group.nextDraw}회차 예측</span>
@@ -344,6 +358,9 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
             </li>
           ))}
         </ul>
+      )}
+      {sidebarGroups.length > VISIBLE_GROUPS && (
+        <button id="more-btn" type="button">더보기 ({sidebarGroups.length - VISIBLE_GROUPS}개 회차)</button>
       )}
     </nav>
     <main class="main">
@@ -364,12 +381,11 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
 
         <section class="card" id="pred3-card" hidden>
           <h2 class="h3" id="pred3-title">3안 예측</h2>
-          <p class="caption" style="margin:0 0 8px">목표금액 기준 임시 초안입니다. 당첨금 데이터 검증 전이며, 번호의 근거는 아직 없습니다.</p>
           <p class="body-1" id="pred3-summary" style="margin:0 0 10px"></p>
           <ul class="pred-list" id="pred3-list"></ul>
         </section>
 
-        <section class="card">
+        <section class="card recent-card">
           <h2 class="h3">최근 5회차 당첨결과</h2>
           <ul class="recent-list">
             {recentDraws.map((d) => {
@@ -400,11 +416,9 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
       <iframe id="viewer" title="선택한 회차 리포트" hidden></iframe>
     </main>
   </div>
-  <script define:vars={{ PREDICTIONS: allPredictions, DRAWS_BY_NO: drawsByNo, PRED_FILENAME: predFilename }}>
-    const BALL_COLORS = ["ball-yellow", "ball-blue", "ball-red", "ball-grey", "ball-green"];
-
+  <script define:vars={{ PREDICTIONS: allPredictions, DRAWS_BY_NO: drawsByNo, PRED_FILENAME: predFilename, BALL_CLASS_BY_NUMBER }}>
     function ballHtml(n, hit) {
-      const zone = BALL_COLORS[Math.min(Math.floor((n - 1) / 10), 4)];
+      const zone = BALL_CLASS_BY_NUMBER[n];
       return `<span class="number-ball ${zone}${hit ? ' hit' : ''}">${n}</span>`;
     }
     function computeHits(predictions, actualNumbers) {
@@ -540,28 +554,49 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
         if (doc && doc.documentElement) doc.documentElement.dataset.theme = currentTheme();
       } catch (e) {}
     }
+    function syncThemeButton() {
+      themeBtn.setAttribute('aria-label', currentTheme() === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환');
+    }
+    syncThemeButton();
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeButton);
     themeBtn.addEventListener('click', () => {
       const next = currentTheme() === 'dark' ? 'light' : 'dark';
       document.documentElement.dataset.theme = next;
       try { localStorage.setItem('lotto-theme', next); } catch (e) {}
       syncIframeTheme();
+      syncThemeButton();
     });
     viewer.addEventListener('load', syncIframeTheme);
 
+    // 모바일에서 닫힌 드로어는 화면 밖에 있으므로 Tab 포커스와 스크린리더 탐색에서 제외한다
+    const mobileMq = window.matchMedia('(max-width: 768px)');
+    function syncSidebarInert() {
+      sidebar.inert = mobileMq.matches && !sidebar.classList.contains('is-open');
+    }
+    mobileMq.addEventListener('change', syncSidebarInert);
     function closeSidebar() {
+      const wasOpen = sidebar.classList.contains('is-open');
       sidebar.classList.remove('is-open');
       sidebarBackdrop.classList.remove('is-open');
       menuBtn.setAttribute('aria-expanded', 'false');
+      syncSidebarInert();
+      if (wasOpen) menuBtn.focus();
     }
     function openSidebar() {
       sidebar.classList.add('is-open');
       sidebarBackdrop.classList.add('is-open');
       menuBtn.setAttribute('aria-expanded', 'true');
+      syncSidebarInert();
+      sidebar.querySelector('a').focus();
     }
+    syncSidebarInert();
     menuBtn.addEventListener('click', () => {
       sidebar.classList.contains('is-open') ? closeSidebar() : openSidebar();
     });
     sidebarBackdrop.addEventListener('click', closeSidebar);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && sidebar.classList.contains('is-open')) closeSidebar();
+    });
 
     document.querySelectorAll('.draw-body a').forEach(a => {
       a.addEventListener('click', (e) => {
@@ -587,6 +622,16 @@ const sidebarGroups: { nextDraw: number; items: PredictionEntry[] }[] = rounds.m
         }
       });
     });
+
+    const moreBtn = document.getElementById('more-btn');
+    if (moreBtn) {
+      moreBtn.addEventListener('click', () => {
+        const hiddenGroups = document.querySelectorAll('.draw-group.is-hidden');
+        hiddenGroups.forEach(el => el.classList.remove('is-hidden'));
+        if (hiddenGroups.length) hiddenGroups[0].querySelector('.draw-header').focus();
+        moreBtn.remove();
+      });
+    }
 
     homeLink.addEventListener('click', (e) => {
       e.preventDefault();

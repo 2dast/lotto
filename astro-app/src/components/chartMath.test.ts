@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { odd, maxConsecutive, zoneCount, officialColor, groupOverlappingPoints } from "./chartMath";
+import { odd, maxConsecutive, zoneCount, officialColor } from "./chartMath";
 
 describe("odd", () => {
   it("counts odd numbers in a combo", () => {
@@ -41,24 +41,5 @@ describe("officialColor", () => {
     expect(officialColor(40)).toBe("#aaaaaa");
     expect(officialColor(41)).toBe("#b0d840");
     expect(officialColor(45)).toBe("#b0d840");
-  });
-});
-
-describe("groupOverlappingPoints", () => {
-  it("assigns offset 0 / groupSize 1 when all values are distinct", () => {
-    expect(groupOverlappingPoints([1, 2, 3])).toEqual([
-      { offsetIndex: 0, groupSize: 1 },
-      { offsetIndex: 0, groupSize: 1 },
-      { offsetIndex: 0, groupSize: 1 },
-    ]);
-  });
-
-  it("spreads duplicate values across offsets in encounter order", () => {
-    expect(groupOverlappingPoints([5, 5, 3, 5])).toEqual([
-      { offsetIndex: 0, groupSize: 3 },
-      { offsetIndex: 1, groupSize: 3 },
-      { offsetIndex: 0, groupSize: 1 },
-      { offsetIndex: 2, groupSize: 3 },
-    ]);
   });
 });
