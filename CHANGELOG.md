@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0](https://github.com/2dast/lotto/compare/v1.1.1...v1.2.0) (2026-10-19)
+
+
+### Features
+
+* **report:** 보고서를 조건 비교와 추천 세트 두 섹션으로 축소 ([75c6b47](https://github.com/2dast/lotto/commit/75c6b47a050eaf10aa233da578a9154da4ed976d))
+
+
+### Bug Fixes
+
+* **a11y:** 리포트 목록 제목 구조와 테마 버튼·드로어 키보드 처리 정비 ([ad4af05](https://github.com/2dast/lotto/commit/ad4af0510f8f23bb9d5ad2f3cfa1d86b525827ad))
+* **a11y:** 모바일에서 닫힌 드로어를 inert 처리 ([22e762a](https://github.com/2dast/lotto/commit/22e762a06a9e0b5363c5d1314fdfde4b1f5c1914))
+
 ## [1.1.1](https://github.com/2dast/lotto/compare/v1.1.0...v1.1.1) (2026-10-18)
 
 
