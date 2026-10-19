@@ -5,8 +5,6 @@
 // nav 없는 단일 시트 문서였다).
 import { getCollection } from "astro:content";
 import PredictionTable from "../../../components/PredictionTable.astro";
-import type { RangeCondition } from "../../../components/RangeChart.astro";
-import { odd, maxConsecutive, zoneCount } from "../../../components/chartMath";
 
 export async function getStaticPaths() {
   const predictions = await getCollection("predictions");
@@ -26,55 +24,40 @@ const nextRound = based_on_drwNo + 1;
 const dateMatch = generated_at.match(/^(\d{4})-(\d{2})-(\d{2})/);
 const dateLabel = dateMatch ? `${dateMatch[1]}.${dateMatch[2]}.${dateMatch[3]}` : generated_at;
 
-const CONDITIONS_OPTION1: RangeCondition[] = [
-  { label: "합계", axisMin: 40, axisMax: 250, allowedMin: 88, allowedMax: 189,
-    value: (combo) => combo.reduce((a, b) => a + b, 0) },
-  { label: "홀수 개수", axisMin: 0, axisMax: 6, allowedMin: 1, allowedMax: 5,
-    value: (combo) => odd(combo) },
-  { label: "최대 연속", axisMin: 1, axisMax: 6, allowedMin: 1, allowedMax: 3,
-    value: (combo) => maxConsecutive(combo) },
-  { label: "1-9구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
-    value: (combo) => zoneCount(combo, 1, 9) },
-  { label: "10-19구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
-    value: (combo) => zoneCount(combo, 10, 19) },
-  { label: "20-29구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
-    value: (combo) => zoneCount(combo, 20, 29) },
-  { label: "30-39구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
-    value: (combo) => zoneCount(combo, 30, 39) },
-  { label: "40-45구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 2,
-    value: (combo) => zoneCount(combo, 40, 45) },
+interface Condition {
+  label: string;
+  allowedMin: number;
+  allowedMax: number;
+}
+
+const CONDITIONS_OPTION1: Condition[] = [
+  { label: "합계", allowedMin: 88, allowedMax: 189 },
+  { label: "홀수 개수", allowedMin: 1, allowedMax: 5 },
+  { label: "최대 연속", allowedMin: 1, allowedMax: 3 },
+  { label: "1-9구간 개수", allowedMin: 0, allowedMax: 3 },
+  { label: "10-19구간 개수", allowedMin: 0, allowedMax: 3 },
+  { label: "20-29구간 개수", allowedMin: 0, allowedMax: 3 },
+  { label: "30-39구간 개수", allowedMin: 0, allowedMax: 3 },
+  { label: "40-45구간 개수", allowedMin: 0, allowedMax: 2 },
 ];
 
-const CONDITIONS_OPTION3: RangeCondition[] = [
-  { label: "합계", axisMin: 40, axisMax: 250, allowedMin: 88, allowedMax: 189,
-    value: (combo) => combo.reduce((a, b) => a + b, 0) },
-  { label: "홀수 개수", axisMin: 0, axisMax: 6, allowedMin: 1, allowedMax: 5,
-    value: (combo) => odd(combo) },
-  { label: "최대 연속", axisMin: 1, axisMax: 6, allowedMin: 1, allowedMax: 2,
-    value: (combo) => maxConsecutive(combo) },
-  { label: "1-31 구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 4,
-    value: (combo) => zoneCount(combo, 1, 31) },
-  { label: "32-45 구간 개수", axisMin: 0, axisMax: 6, allowedMin: 2, allowedMax: 6,
-    value: (combo) => zoneCount(combo, 32, 45) },
+const CONDITIONS_OPTION2: Condition[] = [
+  { label: "합계", allowedMin: 88, allowedMax: 189 },
+  { label: "홀수 개수", allowedMin: 1, allowedMax: 5 },
+  { label: "최대 연속", allowedMin: 1, allowedMax: 3 },
+  { label: "1-9구간 개수", allowedMin: 1, allowedMax: 3 },
+  { label: "10-19구간 개수", allowedMin: 0, allowedMax: 3 },
+  { label: "20-29구간 개수", allowedMin: 0, allowedMax: 3 },
+  { label: "30-39구간 개수", allowedMin: 0, allowedMax: 3 },
+  { label: "40-45구간 개수", allowedMin: 0, allowedMax: 0 },
 ];
 
-const CONDITIONS_OPTION2: RangeCondition[] = [
-  { label: "합계", axisMin: 40, axisMax: 250, allowedMin: 88, allowedMax: 189,
-    value: (combo) => combo.reduce((a, b) => a + b, 0) },
-  { label: "홀수 개수", axisMin: 0, axisMax: 6, allowedMin: 1, allowedMax: 5,
-    value: (combo) => odd(combo) },
-  { label: "최대 연속", axisMin: 1, axisMax: 6, allowedMin: 1, allowedMax: 3,
-    value: (combo) => maxConsecutive(combo) },
-  { label: "1-9구간 개수", axisMin: 0, axisMax: 6, allowedMin: 1, allowedMax: 3,
-    value: (combo) => zoneCount(combo, 1, 9) },
-  { label: "10-19구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
-    value: (combo) => zoneCount(combo, 10, 19) },
-  { label: "20-29구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
-    value: (combo) => zoneCount(combo, 20, 29) },
-  { label: "30-39구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 3,
-    value: (combo) => zoneCount(combo, 30, 39) },
-  { label: "40-45구간 개수", axisMin: 0, axisMax: 6, allowedMin: 0, allowedMax: 0,
-    value: (combo) => zoneCount(combo, 40, 45) },
+const CONDITIONS_OPTION3: Condition[] = [
+  { label: "합계", allowedMin: 88, allowedMax: 189 },
+  { label: "홀수 개수", allowedMin: 1, allowedMax: 5 },
+  { label: "최대 연속", allowedMin: 1, allowedMax: 2 },
+  { label: "1-31 구간 개수", allowedMin: 0, allowedMax: 4 },
+  { label: "32-45 구간 개수", allowedMin: 2, allowedMax: 6 },
 ];
 
 // 조건 비교 표: 안별 허용 범위(min~max). 해당 안에서 쓰지 않는 조건은 "—"로 표시한다.
@@ -84,7 +67,7 @@ const COMPARISON_LABELS = [
   "1-9구간 개수", "10-19구간 개수", "20-29구간 개수", "30-39구간 개수", "40-45구간 개수",
   "1-31 구간 개수", "32-45 구간 개수",
 ];
-function allowedText(conditions: RangeCondition[], label: string): string {
+function allowedText(conditions: Condition[], label: string): string {
   const c = conditions.find((x) => x.label === label);
   return c ? `${c.allowedMin}~${c.allowedMax}` : "—";
 }
@@ -205,6 +188,7 @@ body { margin: 0; background: #f4f3ee; }
 @media (max-width: 560px) {
   .viz-root { padding: 20px 12px 40px; }
   .sheet { padding: 20px 16px 16px; }
+  .sheet .combo-numbers { flex-wrap: nowrap; }
 }
 
 .masthead {
@@ -283,7 +267,7 @@ table {
   font-size: 12px;
 }
 thead tr { border-bottom: 1px solid var(--rule); }
-tbody tr:last-child td { border-bottom: 1.5px solid var(--rule); }
+tbody tr:last-child th, tbody tr:last-child td { border-bottom: 1.5px solid var(--rule); }
 th, td {
   text-align: left;
   padding: 7px 10px;
