@@ -558,6 +558,7 @@ const VISIBLE_GROUPS = 10;
       themeBtn.setAttribute('aria-label', currentTheme() === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환');
     }
     syncThemeButton();
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeButton);
     themeBtn.addEventListener('click', () => {
       const next = currentTheme() === 'dark' ? 'light' : 'dark';
       document.documentElement.dataset.theme = next;
