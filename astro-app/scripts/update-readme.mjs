@@ -2,7 +2,7 @@
 // scripts/update_readme.py의 TS/Node 포트.
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const README_PATH = path.join(ROOT, "README.md");
@@ -11,7 +11,7 @@ const PREDICTIONS_DIR = path.join(ROOT, "predictions");
 const START_MARKER = "<!-- PREDICTION:START -->";
 const END_MARKER = "<!-- PREDICTION:END -->";
 
-function findLatestPredictionsFile(dirPath = PREDICTIONS_DIR) {
+export function findLatestPredictionsFile(dirPath = PREDICTIONS_DIR) {
   if (!existsSync(dirPath)) {
     throw new Error(`${dirPath}에 round_<회차>/predictions_*.json 파일이 없습니다`);
   }
@@ -58,21 +58,25 @@ function buildBlock(data) {
   return lines.join("\n");
 }
 
-function main() {
-  const latestPath = findLatestPredictionsFile();
-  const data = JSON.parse(readFileSync(latestPath, "utf-8"));
-  const readme = readFileSync(README_PATH, "utf-8");
-
+export function replacePredictionBlock(readme, data) {
   const pattern = new RegExp(
     `${START_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s\\S]*?${END_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
   );
   if (!pattern.test(readme)) {
     throw new Error("README.md에서 PREDICTION 마커를 찾을 수 없습니다");
   }
+  return readme.replace(pattern, () => buildBlock(data));
+}
 
-  const updated = readme.replace(pattern, buildBlock(data));
-  writeFileSync(README_PATH, updated, "utf-8");
+function main() {
+  const latestPath = findLatestPredictionsFile();
+  const data = JSON.parse(readFileSync(latestPath, "utf-8"));
+  const readme = readFileSync(README_PATH, "utf-8");
+
+  writeFileSync(README_PATH, replacePredictionBlock(readme, data), "utf-8");
   console.log("README.md 갱신 완료");
 }
 
-main();
+if (import.meta.url === pathToFileURL(path.resolve(process.argv[1] ?? "")).href) {
+  main();
+}

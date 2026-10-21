@@ -49,9 +49,23 @@ jobs:
         working-directory: astro-app
         run: npm run build
 
+      # 방금 만든 dist를 astro preview로 서빙해 드로어·테마·가로 스크롤을 검증한다 (빌드는 다시 하지 않는다).
+      - name: Install Playwright browser
+        working-directory: astro-app
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: astro-app
+        run: npm run test:e2e
+
       - name: Update README
         working-directory: astro-app
         run: node scripts/update-readme.mjs
+
+      # 수집이 API 실패로 폴백했으면 최신 회차가 기대값보다 뒤처진다. 커밋·배포 전에 실패시켜 조용한 성공을 막는다.
+      - name: Verify latest draw is up to date
+        working-directory: astro-app
+        run: node scripts/check-latest-draw.mjs
 
       - name: Commit updated data
         run: |
@@ -60,11 +74,6 @@ jobs:
           git add -f data/draws.json predictions/ README.md
           git diff --cached --quiet || git commit -m "chore: update lotto data and predictions"
           git push
-
-      # 수집이 API 실패로 폴백했으면 최신 회차가 기대값보다 뒤처진다. 여기서 실패시켜 조용한 성공을 막는다.
-      - name: Verify latest draw is up to date
-        working-directory: astro-app
-        run: node scripts/check-latest-draw.mjs
 
       - uses: actions/upload-pages-artifact@v3
         with:
