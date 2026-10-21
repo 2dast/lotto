@@ -49,6 +49,15 @@ jobs:
         working-directory: astro-app
         run: npm run build
 
+      # 방금 만든 dist를 astro preview로 서빙해 드로어·테마·가로 스크롤을 검증한다 (빌드는 다시 하지 않는다).
+      - name: Install Playwright browser
+        working-directory: astro-app
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: astro-app
+        run: npm run test:e2e
+
       - name: Update README
         working-directory: astro-app
         run: node scripts/update-readme.mjs
