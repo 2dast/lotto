@@ -92,6 +92,7 @@ export const predictionsLoader: Loader = {
       rules2Path: RULES_2_PATH,
       rules3Path: RULES_3_PATH,
       outputDir: PREDICTIONS_DIR,
+      force: process.env.FORCE_PREDICT === "true",
     });
 
     const all = listAllPredictions(PREDICTIONS_DIR);

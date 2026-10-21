@@ -61,7 +61,8 @@ export function generatePredictions(rules: Rules, scores: Record<number, number>
   while (predictions.length < numPredictions && attempts < numPredictions * 500) {
     attempts += 1;
     const combo = generateCombo(pool, scores, filters, exclude, include);
-    if (combo === null) continue;
+    // 2000번 시도하고도 필터를 못 통과했다면 조건이 사실상 불가능하다 — 계속 돌려봐야 빌드만 길어진다.
+    if (combo === null) break;
     const key = combo.join(",");
     if (seen.has(key)) continue;
     seen.add(key);

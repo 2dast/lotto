@@ -36,3 +36,38 @@ describe("loadRules", () => {
     expect(() => parseRuleLines(["not_a_real_keyword 1 2"])).toThrow();
   });
 });
+
+describe("parseRuleLines validation", () => {
+  it("throws when a numeric value is missing or not a number", () => {
+    expect(() => parseRuleLines(["sum 88"])).toThrow(/sum/);
+    expect(() => parseRuleLines(["odd_even a b"])).toThrow(/odd_even/);
+    expect(() => parseRuleLines(["freq_all_weight abc"])).toThrow(/freq_all_weight/);
+  });
+
+  it("throws when a range has min greater than max", () => {
+    expect(() => parseRuleLines(["sum 189 88"])).toThrow(/sum/);
+    expect(() => parseRuleLines(["zone 1 9 min 3 max 1"])).toThrow(/zone/);
+  });
+
+  it("throws when include has more than 6 numbers", () => {
+    expect(() => parseRuleLines(["include 1 2 3 4 5 6 7"])).toThrow(/include/);
+  });
+
+  it("throws when include/exclude numbers are outside 1-45", () => {
+    expect(() => parseRuleLines(["include 46"])).toThrow(/include/);
+    expect(() => parseRuleLines(["exclude 0"])).toThrow(/exclude/);
+  });
+
+  it("throws when the same number is in both include and exclude", () => {
+    expect(() => parseRuleLines(["include 7", "exclude 7"])).toThrow(/7/);
+  });
+
+  it("throws when exclude leaves fewer than 6 candidates", () => {
+    const nums = Array.from({ length: 40 }, (_, i) => i + 1).join(" ");
+    expect(() => parseRuleLines([`exclude ${nums}`])).toThrow(/exclude/);
+  });
+
+  it("throws when freq_recent_window is less than 1", () => {
+    expect(() => parseRuleLines(["freq_recent_window 0"])).toThrow(/freq_recent_window/);
+  });
+});

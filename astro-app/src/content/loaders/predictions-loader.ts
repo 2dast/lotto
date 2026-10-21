@@ -22,7 +22,14 @@ export function generateOption(rulesPath: string, draws: Draw[]): PredictionOpti
   }
   const rules = loadRules(rulesPath);
   const scores = scoreNumbers(draws, rules);
-  return { predictions: generatePredictions(rules, scores) };
+  const predictions = generatePredictions(rules, scores);
+  // 조건이 너무 엄격하면 세트가 모자라거나 비어도 조용히 저장·배포되므로 여기서 막는다.
+  if (predictions.length < rules.num_predictions) {
+    throw new Error(
+      `${rulesPath}: 예측 ${rules.num_predictions}세트 중 ${predictions.length}세트만 생성됨 — 조건이 너무 엄격합니다`,
+    );
+  }
+  return { predictions };
 }
 
 export interface GenerateAndSaveOptions {
@@ -30,10 +37,24 @@ export interface GenerateAndSaveOptions {
   rules2Path: string;
   rules3Path?: string;
   outputDir: string;
+  // true면 다음 회차 예측이 이미 있어도 새 파일을 추가한다 (기존 파일은 건드리지 않는다).
+  force?: boolean;
 }
 
 export function generateAndSavePredictions(draws: Draw[], options: GenerateAndSaveOptions): PredictionSet {
-  const { rulesPath, rules2Path, rules3Path, outputDir } = options;
+  const { rulesPath, rules2Path, rules3Path, outputDir, force = false } = options;
+
+  const lastDrwNo = draws.reduce((max, d) => Math.max(max, d.drwNo), 0);
+  const nextDraw = lastDrwNo + 1;
+
+  // 같은 회차는 한 번만 생성한다. 화면만 고친 push나 스케줄 재시도가 번호를 바꾸지 않게 한다.
+  if (!force) {
+    const existing = loadLatestForRound(outputDir, nextDraw);
+    if (existing !== null) {
+      console.log(`${nextDraw}회차 예측이 이미 있어 생성을 건너뜁니다 (${existing.filename})`);
+      return existing.data;
+    }
+  }
 
   const option1 = generateOption(rulesPath, draws);
   if (option1 === null) {
@@ -41,8 +62,6 @@ export function generateAndSavePredictions(draws: Draw[], options: GenerateAndSa
   }
   const option2 = generateOption(rules2Path, draws);
   const option3 = rules3Path ? generateOption(rules3Path, draws) : null;
-
-  const lastDrwNo = draws.reduce((max, d) => Math.max(max, d.drwNo), 0);
 
   const now = new Date();
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
@@ -64,7 +83,6 @@ export function generateAndSavePredictions(draws: Draw[], options: GenerateAndSa
     option3,
   };
 
-  const nextDraw = lastDrwNo + 1;
   const roundDir = path.join(outputDir, `round_${nextDraw}`);
   mkdirSync(roundDir, { recursive: true });
   const outputPath = path.join(roundDir, `predictions_${nextDraw}_${stamp}.json`);
@@ -110,6 +128,19 @@ export function listAllPredictions(
     }
   }
   return candidates;
+}
+
+function loadLatestForRound(
+  predictionsDir: string,
+  round: number,
+): { filename: string; data: PredictionSet } | null {
+  const inRound = listAllPredictions(predictionsDir).filter(({ filename }) =>
+    filename.startsWith(`predictions_${round}_`),
+  );
+  if (inRound.length === 0) return null;
+  return inRound.reduce((latest, current) =>
+    current.data.generated_at > latest.data.generated_at ? current : latest,
+  );
 }
 
 export function loadLatestPredictions(

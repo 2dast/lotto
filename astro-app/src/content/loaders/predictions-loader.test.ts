@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -112,6 +112,66 @@ describe("generateAndSavePredictions", () => {
       outputDir: tempDir(),
     });
     expect(withoutThird.option3).toBeNull();
+  });
+});
+
+describe("generateAndSavePredictions: once per round", () => {
+  function tempDir(): string {
+    return mkdtempSync(path.join(tmpdir(), "predictions-once-test-"));
+  }
+  const baseOptions = (outputDir: string) => ({
+    rulesPath: REAL_RULES_PATH,
+    rules2Path: REAL_RULES_2_PATH,
+    outputDir,
+  });
+
+  it("skips generation when the next round already has a prediction file", () => {
+    const draws = makeDraws(30);
+    const outputDir = tempDir();
+    const first = generateAndSavePredictions(draws, baseOptions(outputDir));
+    const second = generateAndSavePredictions(draws, baseOptions(outputDir));
+
+    const files = readdirSync(path.join(outputDir, "round_31")) as string[];
+    expect(files.length).toBe(1);
+    expect(second).toEqual(first);
+  });
+
+  it("adds a new file without touching the existing one when force is true", () => {
+    const draws = makeDraws(30);
+    const outputDir = tempDir();
+    generateAndSavePredictions(draws, baseOptions(outputDir));
+    const roundDir = path.join(outputDir, "round_31");
+    const [existing] = readdirSync(roundDir) as string[];
+    const before = readFileSync(path.join(roundDir, existing), "utf-8");
+
+    // 파일명이 초 단위 타임스탬프라 같은 초에 두 번 만들면 덮어쓰게 된다 — 1초 이상 띄운다.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 2000);
+    try {
+      generateAndSavePredictions(draws, { ...baseOptions(outputDir), force: true });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const files = readdirSync(roundDir) as string[];
+    expect(files.length).toBe(2);
+    expect(readFileSync(path.join(roundDir, existing), "utf-8")).toBe(before);
+  });
+
+  it("still generates when only another round has files", () => {
+    const outputDir = tempDir();
+    generateAndSavePredictions(makeDraws(30), baseOptions(outputDir));
+    generateAndSavePredictions(makeDraws(31), baseOptions(outputDir));
+    expect((readdirSync(path.join(outputDir, "round_32")) as string[]).length).toBe(1);
+  });
+});
+
+describe("generateOption: shortfall", () => {
+  it("throws when the filters are too strict to produce the requested number of sets", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "predictions-shortfall-"));
+    const rulesPath = path.join(dir, "RULES.md");
+    writeFileSync(rulesPath, "```\nsum 1 2\npredictions 5\n```\n", "utf-8");
+    expect(() => generateOption(rulesPath, makeDraws(30))).toThrow(/5/);
   });
 });
 
