@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/2dast/lotto/compare/v1.2.0...v1.2.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ci:** 최신 회차 검증을 커밋 앞으로 옮기고 update-readme 테스트 추가 ([fb0e46f](https://github.com/2dast/lotto/commit/fb0e46fc8538179b62eb54faad39954fd71344ef))
+
 ## [1.2.0](https://github.com/2dast/lotto/compare/v1.1.1...v1.2.0) (2026-10-19)
 
 
