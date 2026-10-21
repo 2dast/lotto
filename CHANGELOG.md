@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/2dast/lotto/compare/v1.2.1...v1.2.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ci:** package-lock.json에 누락된 @emnapi/core·runtime 추가 ([4dde586](https://github.com/2dast/lotto/commit/4dde586ad26c243f91096b256e8ccecdf4b091c6))
+
 ## [1.2.1](https://github.com/2dast/lotto/compare/v1.2.0...v1.2.1) (2026-10-21)
 
 
