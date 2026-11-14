@@ -99,7 +99,7 @@ for (const viewport of [MOBILE, DESKTOP]) {
   });
 }
 
-// 가장 오래된 리포트의 회차는 이미 추첨됐으므로 Ⅲ 섹션에 당첨 결과가 나온다.
+// 가장 오래된 리포트의 회차는 이미 추첨됐으므로 Ⅰ·Ⅱ 표에 당첨 결과가 얹힌다.
 async function oldestReportPath(page: Page): Promise<string> {
   await page.goto("reports/");
   const src = await page.locator(".draw-body a").last().getAttribute("data-src");
@@ -107,24 +107,30 @@ async function oldestReportPath(page: Page): Promise<string> {
   return src as string;
 }
 
-test.describe("개별 리포트 Ⅲ. 당첨 결과 분석", () => {
-  test("추첨된 회차는 당첨번호·적중·조건 통과 여부를 보여준다", async ({ page }) => {
+test.describe("개별 리포트의 당첨 결과", () => {
+  test("추첨된 회차는 당첨번호 띠와 Ⅰ·Ⅱ 표의 당첨 결과를 보여준다", async ({ page }) => {
     await page.goto(await oldestReportPath(page));
-    await expect(page.getByRole("heading", { name: /당첨 결과 분석/ })).toBeVisible();
     await expect(page.getByRole("group", { name: /회차 당첨번호/ }).locator(".ball")).toHaveCount(7);
     await expect(page.getByText("1등 당첨금")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "1안 적중" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "조건 통과 여부" })).toBeVisible();
+    // Ⅰ 조건 비교: 당첨번호 열과 통과 수 행
+    await expect(page.getByRole("columnheader", { name: "당첨번호" })).toBeVisible();
+    await expect(page.getByRole("rowheader", { name: "통과 수" })).toBeVisible();
     await expect(page.getByText(/통과|미달/).first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: /당첨번호 통계 vs/ })).toBeVisible();
+    // Ⅱ 추천 세트: 적중 열, 당첨 행, 평균 행
+    await expect(page.getByRole("columnheader", { name: "적중" }).first()).toBeVisible();
+    await expect(page.locator(".win-row").first()).toBeVisible();
+    await expect(page.locator(".avg-row").first()).toBeVisible();
+    // 별도 Ⅲ 섹션은 없다
+    await expect(page.getByRole("heading", { name: /당첨 결과 분석/ })).toHaveCount(0);
   });
 
-  test("최신 리포트도 Ⅲ 섹션이 있고, 추첨 전이면 안내 한 줄만 나온다", async ({ page }) => {
+  test("최신 리포트가 추첨 전이면 안내 한 줄만 나오고 표는 그대로다", async ({ page }) => {
     await page.goto(await firstReportPath(page));
-    await expect(page.getByRole("heading", { name: /당첨 결과 분석/ })).toBeVisible();
     const notDrawn = page.getByText("아직 추첨 전입니다");
     if (await notDrawn.count()) {
       await expect(page.getByText("1등 당첨금")).toHaveCount(0);
+      await expect(page.getByRole("columnheader", { name: "당첨번호" })).toHaveCount(0);
+      await expect(page.locator(".win-row")).toHaveCount(0);
     } else {
       await expect(page.getByText("1등 당첨금")).toBeVisible();
     }

@@ -6,7 +6,7 @@
 import { getCollection } from "astro:content";
 import PredictionTable from "../../../components/PredictionTable.astro";
 import { officialColor } from "../../../components/chartMath";
-import { countHits, evaluateConditions, averageMetric, metricValue } from "../../../lib/lotto/winning";
+import { evaluateConditions, metricValue } from "../../../lib/lotto/winning";
 
 export async function getStaticPaths() {
   const predictions = await getCollection("predictions");
@@ -87,51 +87,20 @@ const recommendedSets = [
     predictions: option3?.predictions ?? null },
 ];
 
-// Ⅲ. 당첨 결과 분석: 해당 회차가 이미 추첨돼 draws에 있을 때만 계산한다.
+// 당첨 결과: 해당 회차가 이미 추첨돼 draws에 있을 때만 Ⅰ·Ⅱ 표에 얹는다.
 const drawEntries = await getCollection("draws");
 const draw = drawEntries.find((e) => e.data.drwNo === nextRound)?.data ?? null;
 
-const STAT_LABELS = [
-  "합계", "홀수 개수", "최대 연속",
-  "1-9구간 개수", "10-19구간 개수", "20-29구간 개수", "30-39구간 개수", "40-45구간 개수",
-];
-
-const analysis = draw
-  ? {
-      winning: [...draw.numbers].sort((a, b) => a - b),
-      bonus: draw.bonusNo,
-      prizeLabel: draw.firstPrizeAmount != null ? `${draw.firstPrizeAmount.toLocaleString("ko-KR")}원` : "정보 없음",
-      options: recommendedSets.map((set, i) => {
-        const sets = set.predictions;
-        const hits = sets ? sets.map((combo) => countHits(combo, draw.numbers)) : [];
-        const conditions = evaluateConditions(draw.numbers, OPTION_CONDITIONS[i]);
-        return {
-          name: set.name,
-          sets,
-          hits,
-          best: hits.length ? Math.max(...hits) : 0,
-          conditions,
-          passCount: conditions.filter((c) => c.pass).length,
-        };
-      }),
-      condRows: COMPARISON_LABELS.map((label) => ({
-        label,
-        cells: OPTION_CONDITIONS.map((conds) => {
-          const c = evaluateConditions(draw.numbers, conds).find((r) => r.label === label);
-          return c ? { range: `${c.allowedMin}~${c.allowedMax}`, pass: c.pass } : null;
-        }),
-        value: metricValue(label, draw.numbers),
-      })),
-      statRows: STAT_LABELS.map((label) => ({
-        label,
-        winning: metricValue(label, draw.numbers),
-        averages: recommendedSets.map((set) => {
-          const avg = set.predictions ? averageMetric(label, set.predictions) : null;
-          return avg == null ? "—" : avg.toFixed(1);
-        }),
-      })),
-    }
-  : null;
+const winning = draw ? [...draw.numbers].sort((a, b) => a - b) : null;
+const prizeLabel =
+  draw?.firstPrizeAmount != null ? `${draw.firstPrizeAmount.toLocaleString("ko-KR")}원` : "정보 없음";
+const winResults = draw ? OPTION_CONDITIONS.map((conds) => evaluateConditions(draw.numbers, conds)) : null;
+const winPassCounts = winResults ? winResults.map((rs) => `${rs.filter((r) => r.pass).length}/${rs.length}`) : null;
+const winningValue = (label: string): number | null => (draw ? metricValue(label, draw.numbers) : null);
+function verdict(optionIndex: number, label: string): "통과" | "미달" | null {
+  const r = winResults?.[optionIndex].find((x) => x.label === label);
+  return r ? (r.pass ? "통과" : "미달") : null;
+}
 ---
 <!doctype html>
 <html lang="ko">
@@ -329,8 +298,18 @@ td.num { font-variant-numeric: tabular-nums; text-align: right; color: var(--tex
   align-items: center;
   justify-content: space-between;
   gap: 8px 16px;
+  padding: 10px 0;
+  margin-bottom: 24px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 .sheet .win-summary .combo-numbers { flex-wrap: wrap; align-items: center; }
+.win-summary .bonus-group { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.win-summary .win-label { font-size: 11px; font-weight: 700; color: var(--navy); margin-right: 4px; }
+.win-pending { font-size: 12px; color: var(--text-muted); margin: 0 0 24px; max-width: 68ch; }
+.win-row td { background: var(--bg); font-weight: 700; }
+.avg-row td { color: var(--text-muted); }
+.win-row td:first-child, .avg-row td:first-child { white-space: nowrap; }
 .win-summary .plus, .win-summary .bonus-label { color: var(--text-muted); font-size: 11px; }
 .win-summary .prize { margin: 0; font-size: 12px; color: var(--text-secondary); }
 .win-summary .prize b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
@@ -364,178 +343,86 @@ td .range { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
   <h1>추천 세트 비교</h1>
   <p class="subtitle"><span>{nextRound}</span>회차 예측 · 기준 데이터 <span>{based_on_drwNo}</span>회차</p>
 
+  {draw && winning ? (
+    <div class="win-summary">
+      <div class="combo-numbers" role="group" aria-label={`${nextRound}회차 당첨번호`}>
+        <span class="win-label">{nextRound}회차 당첨번호</span>
+        {winning.map((n) => (
+          <span class="ball" style={`background:${officialColor(n)}`}>{n}</span>
+        ))}
+        <span class="bonus-group">
+          <span class="plus" aria-hidden="true">+</span>
+          <span class="ball" style={`background:${officialColor(draw.bonusNo)}`} aria-label={`보너스 번호 ${draw.bonusNo}`}>{draw.bonusNo}</span>
+          <span class="bonus-label">보너스</span>
+        </span>
+      </div>
+      <p class="prize">1등 당첨금 <b>{prizeLabel}</b></p>
+    </div>
+  ) : (
+    <p class="win-pending">{nextRound}회차는 아직 추첨 전입니다. 추첨 결과가 반영되면 당첨번호와 비교한 결과가 아래 표에 표시됩니다.</p>
+  )}
+
   <section>
     <h2><span class="roman">Ⅰ.</span> 조건 비교</h2>
-    <p class="section-desc">안별로 적용한 조건의 허용 범위</p>
+    <p class="section-desc">{winning ? "안별로 적용한 조건의 허용 범위와, 실제 당첨번호가 그 범위를 통과했는지 여부" : "안별로 적용한 조건의 허용 범위"}</p>
     <div class="table-scroll">
       <table>
-        <thead><tr><th scope="col">조건</th><th scope="col" style="text-align:right">1안</th><th scope="col" style="text-align:right">2안</th><th scope="col" style="text-align:right">3안</th></tr></thead>
+        <thead><tr><th scope="col">조건</th>{winning && <th scope="col" style="text-align:right">당첨번호</th>}<th scope="col" style="text-align:right">1안</th><th scope="col" style="text-align:right">2안</th><th scope="col" style="text-align:right">3안</th></tr></thead>
         <tbody>
           {comparisonRows.map((row) => (
             <tr>
               <th scope="row">{row.label}</th>
-              {row.values.map((v) => <td class="num">{v}</td>)}
+              {winning && <td class="num">{winningValue(row.label)}</td>}
+              {row.values.map((v, i) => {
+                const vd = verdict(i, row.label);
+                return (
+                  <td class="num">
+                    {vd ? (
+                      <>
+                        <span class="range">{v}</span>{" "}
+                        <span class={vd === "통과" ? "pass" : "fail"}>{vd}</span>
+                      </>
+                    ) : v}
+                  </td>
+                );
+              })}
             </tr>
           ))}
           <tr>
             <th scope="row">번호 선택</th>
+            {winning && <td class="num">—</td>}
             <td class="num">빈도 상위 우대</td>
             <td class="num">콜드넘버 우대</td>
             <td class="num">빈도 미반영(균등)</td>
           </tr>
+          {winPassCounts && (
+            <tr>
+              <th scope="row">통과 수</th>
+              <td class="num">—</td>
+              {winPassCounts.map((c) => <td class="num"><b>{c}</b></td>)}
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
-    <p class="chart-note">※ 값은 허용 범위(최소~최대)이고, "—"는 그 안에서 쓰지 않는 조건이다.</p>
+    <p class="chart-note">※ 값은 허용 범위(최소~최대)이고, "—"는 그 안에서 쓰지 않는 조건이다.{winning ? " 통과/미달은 당첨번호의 값이 그 범위 안인지 본 결과다." : ""}</p>
   </section>
 
   <section>
     <h2><span class="roman">Ⅱ.</span> 추천 세트</h2>
-    <p class="section-desc">안별 추천 세트와 핵심 수치</p>
+    <p class="section-desc">{winning ? "안별 추천 세트와 핵심 수치. 당첨번호와 겹친 번호는 테두리로 표시하고 나머지는 흐리게 표시한다." : "안별 추천 세트와 핵심 수치"}</p>
     {recommendedSets.map((set) => (
       <div class="option-block">
         <h3>{set.name}</h3>
         <p class="chart-note">{set.desc}</p>
         {set.predictions ? (
-          <PredictionTable predictions={set.predictions} />
+          <PredictionTable predictions={set.predictions} winning={draw?.numbers} />
         ) : (
           <p class="chart-note">이 파일에는 {set.name} 예측이 없습니다.</p>
         )}
       </div>
     ))}
     <p class="chart-note">※ 구간분포는 1-9·10-19·20-29·30-39·40-45 순서로 각 구간에 포함된 번호 개수다.</p>
-  </section>
-
-  <section>
-    <h2><span class="roman">Ⅲ.</span> 당첨 결과 분석</h2>
-    {analysis ? (
-      <>
-        <p class="section-desc">{nextRound}회차 추첨 결과와 이 리포트의 추천 세트를 나란히 놓고 돌아본 내용</p>
-        <div class="win-summary">
-          <div class="combo-numbers" role="group" aria-label={`${nextRound}회차 당첨번호`}>
-            {analysis.winning.map((n) => (
-              <span class="ball" style={`background:${officialColor(n)}`}>{n}</span>
-            ))}
-            <span class="plus" aria-hidden="true">+</span>
-            <span class="ball" style={`background:${officialColor(analysis.bonus)}`} aria-label={`보너스 번호 ${analysis.bonus}`}>{analysis.bonus}</span>
-            <span class="bonus-label">보너스</span>
-          </div>
-          <p class="prize">1등 당첨금 <b class="num">{analysis.prizeLabel}</b></p>
-        </div>
-
-        {analysis.options.map((opt) => (
-          <div class="option-block">
-            <h3>{opt.name} 적중</h3>
-            {opt.sets ? (
-              <>
-                <p class="chart-note">최고 {opt.best}개 · 당첨번호 6개와 겹친 번호는 테두리로 표시하고 나머지는 흐리게 표시한다.</p>
-                <div class="table-scroll">
-                  <table class="screen-table">
-                    <thead>
-                      <tr><th>세트</th><th>번호</th><th style="text-align:right">적중</th></tr>
-                    </thead>
-                    <tbody>
-                      {opt.sets.map((combo, i) => (
-                        <tr>
-                          <td>{i + 1}</td>
-                          <td>
-                            <div class="combo-numbers">
-                              {combo.map((n) => {
-                                const isHit = analysis.winning.includes(n);
-                                return (
-                                  <span class={`ball ${isHit ? "hit" : "dim"}`} style={`background:${officialColor(n)}`} aria-label={isHit ? `${n} 적중` : `${n} 미적중`}>{n}</span>
-                                );
-                              })}
-                            </div>
-                          </td>
-                          <td class="num">{opt.hits[i]}개</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            ) : (
-              <p class="chart-note">이 파일에는 {opt.name} 예측이 없습니다.</p>
-            )}
-          </div>
-        ))}
-
-        <div class="option-block">
-          <h3>조건 통과 여부</h3>
-          <p class="chart-note">실제 당첨번호가 안별 허용 범위(최소~최대)를 통과했는지 본 결과. "—"는 그 안에서 쓰지 않는 조건이다.</p>
-          <div class="table-scroll">
-            <table class="screen-table">
-              <thead>
-                <tr>
-                  <th>조건</th>
-                  <th style="text-align:right">당첨번호</th>
-                  <th style="text-align:right">1안</th>
-                  <th style="text-align:right">2안</th>
-                  <th style="text-align:right">3안</th>
-                </tr>
-              </thead>
-              <tbody>
-                {analysis.condRows.map((row) => (
-                  <tr>
-                    <th scope="row">{row.label}</th>
-                    <td class="num">{row.value}</td>
-                    {row.cells.map((cell) => (
-                      <td class="num">
-                        {cell ? (
-                          <>
-                            <span class="range">{cell.range}</span>{" "}
-                            <span class={cell.pass ? "pass" : "fail"}>{cell.pass ? "통과" : "미달"}</span>
-                          </>
-                        ) : "—"}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-                <tr>
-                  <th scope="row">통과 수</th>
-                  <td class="num"></td>
-                  {analysis.options.map((opt) => (
-                    <td class="num"><b>{opt.passCount}/{opt.conditions.length}</b></td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="option-block">
-          <h3>당첨번호 통계 vs 추천 세트 평균</h3>
-          <p class="chart-note">안별 평균은 그 안의 추천 세트 전체를 평균한 값이다.</p>
-          <div class="table-scroll">
-            <table class="screen-table">
-              <thead>
-                <tr>
-                  <th>항목</th>
-                  <th style="text-align:right">당첨번호</th>
-                  <th style="text-align:right">1안 평균</th>
-                  <th style="text-align:right">2안 평균</th>
-                  <th style="text-align:right">3안 평균</th>
-                </tr>
-              </thead>
-              <tbody>
-                {analysis.statRows.map((row) => (
-                  <tr>
-                    <th scope="row">{row.label}</th>
-                    <td class="num">{row.winning}</td>
-                    {row.averages.map((avg) => <td class="num">{avg}</td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <p class="chart-note">※ 지난 결과를 돌아본 것이며 다음 회차의 당첨 가능성과는 관계가 없다.</p>
-      </>
-    ) : (
-      <p class="chart-note">{nextRound}회차는 아직 추첨 전입니다. 추첨 결과가 반영되면 당첨번호와 분석이 여기에 표시됩니다.</p>
-    )}
   </section>
 
   <div class="disclaimer">
