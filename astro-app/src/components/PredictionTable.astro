@@ -7,27 +7,53 @@
 // at build time and never change afterward, there is no interactive reason to
 // keep this as client-side JS — Astro renders the same table directly from
 // props with zero shipped JS.
+//
+// `winning`(추첨이 끝난 회차의 당첨번호 6개)을 주면 표에 결과를 얹는다:
+// 맞힌 번호 강조, 적중 열, 맨 위 "당첨" 행, 맨 아래 "평균" 행. 안 주면 예전과 같은 표다.
 import { odd, maxConsecutive, zoneCount, officialColor, ZONE_RANGES } from "./chartMath";
+import { countHits, averageMetric } from "../lib/lotto/winning";
 
 interface Props {
   predictions: number[][];
+  winning?: number[];
 }
 
-const { predictions } = Astro.props;
+const { predictions, winning } = Astro.props;
+const winSet = winning ? new Set(winning) : null;
+
+function stats(combo: number[]) {
+  return {
+    combo,
+    sum: combo.reduce((a, b) => a + b, 0),
+    odd: odd(combo),
+    run: maxConsecutive(combo),
+    zones: ZONE_RANGES.map(([lo, hi]) => zoneCount(combo, lo, hi)).join("·"),
+  };
+}
 
 const rows = predictions.map((combo) => ({
-  combo,
-  sum: combo.reduce((a, b) => a + b, 0),
-  odd: odd(combo),
-  run: maxConsecutive(combo),
-  zones: ZONE_RANGES.map(([lo, hi]) => zoneCount(combo, lo, hi)).join("·"),
+  ...stats(combo),
+  hits: winning ? countHits(combo, winning) : null,
 }));
+
+const winRow = winning ? stats([...winning].sort((a, b) => a - b)) : null;
+
+const fmt = (v: number | null) => (v == null ? "—" : v.toFixed(1));
+const avgRow = winning
+  ? {
+      sum: fmt(averageMetric("합계", predictions)),
+      odd: fmt(averageMetric("홀수 개수", predictions)),
+      run: fmt(averageMetric("최대 연속", predictions)),
+      hits: fmt(rows.length ? rows.reduce((a, r) => a + (r.hits ?? 0), 0) / rows.length : null),
+    }
+  : null;
 ---
 <div class="table-scroll">
   <table class="screen-table">
     <thead>
       <tr>
         <th>세트</th><th>번호</th>
+        {winning && <th style="text-align:right">적중</th>}
         <th style="text-align:right">합계</th>
         <th style="text-align:right">홀수</th>
         <th style="text-align:right">최대연속</th>
@@ -35,22 +61,55 @@ const rows = predictions.map((combo) => ({
       </tr>
     </thead>
     <tbody>
+      {winRow && (
+        <tr class="win-row">
+          <td>당첨</td>
+          <td>
+            <div class="combo-numbers">
+              {winRow.combo.map((n) => (
+                <span class="ball" style={`background:${officialColor(n)}`}>{n}</span>
+              ))}
+            </div>
+          </td>
+          <td class="num">—</td>
+          <td class="num">{winRow.sum}</td>
+          <td class="num">{winRow.odd}</td>
+          <td class="num">{winRow.run}</td>
+          <td class="num">{winRow.zones}</td>
+        </tr>
+      )}
       {rows.map((row, i) => (
         <tr>
           <td>{i + 1}</td>
           <td>
             <div class="combo-numbers">
               {row.combo.map((n) => (
-                <span class="ball" style={`background:${officialColor(n)}`}>{n}</span>
+                <span
+                  class={winSet ? `ball ${winSet.has(n) ? "hit" : "dim"}` : "ball"}
+                  style={`background:${officialColor(n)}`}
+                  aria-label={winSet ? `${n} ${winSet.has(n) ? "적중" : "미적중"}` : undefined}
+                >{n}</span>
               ))}
             </div>
           </td>
+          {row.hits != null && <td class="num">{row.hits}개</td>}
           <td class="num">{row.sum}</td>
           <td class="num">{row.odd}</td>
           <td class="num">{row.run}</td>
           <td class="num">{row.zones}</td>
         </tr>
       ))}
+      {avgRow && (
+        <tr class="avg-row">
+          <td>평균</td>
+          <td></td>
+          <td class="num">{avgRow.hits}개</td>
+          <td class="num">{avgRow.sum}</td>
+          <td class="num">{avgRow.odd}</td>
+          <td class="num">{avgRow.run}</td>
+          <td class="num">—</td>
+        </tr>
+      )}
     </tbody>
   </table>
 </div>
