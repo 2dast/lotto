@@ -98,3 +98,43 @@ for (const viewport of [MOBILE, DESKTOP]) {
     await expectNoHorizontalScroll(page);
   });
 }
+
+// 가장 오래된 리포트의 회차는 이미 추첨됐으므로 Ⅲ 섹션에 당첨 결과가 나온다.
+async function oldestReportPath(page: Page): Promise<string> {
+  await page.goto("reports/");
+  const src = await page.locator(".draw-body a").last().getAttribute("data-src");
+  expect(src).toBeTruthy();
+  return src as string;
+}
+
+test.describe("개별 리포트 Ⅲ. 당첨 결과 분석", () => {
+  test("추첨된 회차는 당첨번호·적중·조건 통과 여부를 보여준다", async ({ page }) => {
+    await page.goto(await oldestReportPath(page));
+    await expect(page.getByRole("heading", { name: /당첨 결과 분석/ })).toBeVisible();
+    await expect(page.getByRole("group", { name: /회차 당첨번호/ }).locator(".ball")).toHaveCount(7);
+    await expect(page.getByText("1등 당첨금")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "1안 적중" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "조건 통과 여부" })).toBeVisible();
+    await expect(page.getByText(/통과|미달/).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /당첨번호 통계 vs/ })).toBeVisible();
+  });
+
+  test("최신 리포트도 Ⅲ 섹션이 있고, 추첨 전이면 안내 한 줄만 나온다", async ({ page }) => {
+    await page.goto(await firstReportPath(page));
+    await expect(page.getByRole("heading", { name: /당첨 결과 분석/ })).toBeVisible();
+    const notDrawn = page.getByText("아직 추첨 전입니다");
+    if (await notDrawn.count()) {
+      await expect(page.getByText("1등 당첨금")).toHaveCount(0);
+    } else {
+      await expect(page.getByText("1등 당첨금")).toBeVisible();
+    }
+  });
+
+  for (const viewport of [MOBILE, DESKTOP]) {
+    test(`추첨된 회차 리포트는 ${viewport.width}px에서 가로 스크롤이 없다`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto(await oldestReportPath(page));
+      await expectNoHorizontalScroll(page);
+    });
+  }
+});
