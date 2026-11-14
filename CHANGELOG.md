@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/2dast/lotto/compare/v1.2.2...v1.3.0) (2026-11-14)
+
+
+### Features
+
+* **report:** 상세 리포트에 당첨 결과 분석 섹션 추가 ([4d919f3](https://github.com/2dast/lotto/commit/4d919f3badbade5d68ad397e68b0684141b206d3))
+* **report:** 상세 리포트에 당첨 결과 분석 섹션 추가 ([e11b42c](https://github.com/2dast/lotto/commit/e11b42c687681abf398378c4f7a26612ad8c5aa8))
+
 ## [1.2.2](https://github.com/2dast/lotto/compare/v1.2.1...v1.2.2) (2026-10-21)
 
 
