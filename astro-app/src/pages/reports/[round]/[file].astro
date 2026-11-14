@@ -5,6 +5,8 @@
 // nav 없는 단일 시트 문서였다).
 import { getCollection } from "astro:content";
 import PredictionTable from "../../../components/PredictionTable.astro";
+import { officialColor } from "../../../components/chartMath";
+import { countHits, evaluateConditions, averageMetric, metricValue } from "../../../lib/lotto/winning";
 
 export async function getStaticPaths() {
   const predictions = await getCollection("predictions");
@@ -84,6 +86,52 @@ const recommendedSets = [
   { name: "3안", desc: "생일 번호(1~31) 쏠림을 줄이고 연속 번호를 피하는 조건을 적용한 세트.",
     predictions: option3?.predictions ?? null },
 ];
+
+// Ⅲ. 당첨 결과 분석: 해당 회차가 이미 추첨돼 draws에 있을 때만 계산한다.
+const drawEntries = await getCollection("draws");
+const draw = drawEntries.find((e) => e.data.drwNo === nextRound)?.data ?? null;
+
+const STAT_LABELS = [
+  "합계", "홀수 개수", "최대 연속",
+  "1-9구간 개수", "10-19구간 개수", "20-29구간 개수", "30-39구간 개수", "40-45구간 개수",
+];
+
+const analysis = draw
+  ? {
+      winning: [...draw.numbers].sort((a, b) => a - b),
+      bonus: draw.bonusNo,
+      prizeLabel: draw.firstPrizeAmount != null ? `${draw.firstPrizeAmount.toLocaleString("ko-KR")}원` : "정보 없음",
+      options: recommendedSets.map((set, i) => {
+        const sets = set.predictions;
+        const hits = sets ? sets.map((combo) => countHits(combo, draw.numbers)) : [];
+        const conditions = evaluateConditions(draw.numbers, OPTION_CONDITIONS[i]);
+        return {
+          name: set.name,
+          sets,
+          hits,
+          best: hits.length ? Math.max(...hits) : 0,
+          conditions,
+          passCount: conditions.filter((c) => c.pass).length,
+        };
+      }),
+      condRows: COMPARISON_LABELS.map((label) => ({
+        label,
+        cells: OPTION_CONDITIONS.map((conds) => {
+          const c = evaluateConditions(draw.numbers, conds).find((r) => r.label === label);
+          return c ? { range: `${c.allowedMin}~${c.allowedMax}`, pass: c.pass } : null;
+        }),
+        value: metricValue(label, draw.numbers),
+      })),
+      statRows: STAT_LABELS.map((label) => ({
+        label,
+        winning: metricValue(label, draw.numbers),
+        averages: recommendedSets.map((set) => {
+          const avg = set.predictions ? averageMetric(label, set.predictions) : null;
+          return avg == null ? "—" : avg.toFixed(1);
+        }),
+      })),
+    }
+  : null;
 ---
 <!doctype html>
 <html lang="ko">
@@ -275,6 +323,23 @@ td.num { font-variant-numeric: tabular-nums; text-align: right; color: var(--tex
   color: #fff;
 }
 
+.win-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.sheet .win-summary .combo-numbers { flex-wrap: wrap; align-items: center; }
+.win-summary .plus, .win-summary .bonus-label { color: var(--text-muted); font-size: 11px; }
+.win-summary .prize { margin: 0; font-size: 12px; color: var(--text-secondary); }
+.win-summary .prize b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.ball.hit { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+.ball.dim { opacity: 0.3; }
+td .pass { color: var(--navy); font-weight: 700; white-space: nowrap; }
+td .fail { color: var(--text-muted); white-space: nowrap; }
+td .range { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+
 .disclaimer {
   color: var(--text-muted);
   font-size: 10.5px;
@@ -339,6 +404,138 @@ td.num { font-variant-numeric: tabular-nums; text-align: right; color: var(--tex
       </div>
     ))}
     <p class="chart-note">※ 구간분포는 1-9·10-19·20-29·30-39·40-45 순서로 각 구간에 포함된 번호 개수다.</p>
+  </section>
+
+  <section>
+    <h2><span class="roman">Ⅲ.</span> 당첨 결과 분석</h2>
+    {analysis ? (
+      <>
+        <p class="section-desc">{nextRound}회차 추첨 결과와 이 리포트의 추천 세트를 나란히 놓고 돌아본 내용</p>
+        <div class="win-summary">
+          <div class="combo-numbers" role="group" aria-label={`${nextRound}회차 당첨번호`}>
+            {analysis.winning.map((n) => (
+              <span class="ball" style={`background:${officialColor(n)}`}>{n}</span>
+            ))}
+            <span class="plus" aria-hidden="true">+</span>
+            <span class="ball" style={`background:${officialColor(analysis.bonus)}`} aria-label={`보너스 번호 ${analysis.bonus}`}>{analysis.bonus}</span>
+            <span class="bonus-label">보너스</span>
+          </div>
+          <p class="prize">1등 당첨금 <b class="num">{analysis.prizeLabel}</b></p>
+        </div>
+
+        {analysis.options.map((opt) => (
+          <div class="option-block">
+            <h3>{opt.name} 적중</h3>
+            {opt.sets ? (
+              <>
+                <p class="chart-note">최고 {opt.best}개 · 당첨번호 6개와 겹친 번호는 테두리로 표시하고 나머지는 흐리게 표시한다.</p>
+                <div class="table-scroll">
+                  <table class="screen-table">
+                    <thead>
+                      <tr><th>세트</th><th>번호</th><th style="text-align:right">적중</th></tr>
+                    </thead>
+                    <tbody>
+                      {opt.sets.map((combo, i) => (
+                        <tr>
+                          <td>{i + 1}</td>
+                          <td>
+                            <div class="combo-numbers">
+                              {combo.map((n) => {
+                                const isHit = analysis.winning.includes(n);
+                                return (
+                                  <span class={`ball ${isHit ? "hit" : "dim"}`} style={`background:${officialColor(n)}`} aria-label={isHit ? `${n} 적중` : `${n} 미적중`}>{n}</span>
+                                );
+                              })}
+                            </div>
+                          </td>
+                          <td class="num">{opt.hits[i]}개</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <p class="chart-note">이 파일에는 {opt.name} 예측이 없습니다.</p>
+            )}
+          </div>
+        ))}
+
+        <div class="option-block">
+          <h3>조건 통과 여부</h3>
+          <p class="chart-note">실제 당첨번호가 안별 허용 범위(최소~최대)를 통과했는지 본 결과. "—"는 그 안에서 쓰지 않는 조건이다.</p>
+          <div class="table-scroll">
+            <table class="screen-table">
+              <thead>
+                <tr>
+                  <th>조건</th>
+                  <th style="text-align:right">당첨번호</th>
+                  <th style="text-align:right">1안</th>
+                  <th style="text-align:right">2안</th>
+                  <th style="text-align:right">3안</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analysis.condRows.map((row) => (
+                  <tr>
+                    <th scope="row">{row.label}</th>
+                    <td class="num">{row.value}</td>
+                    {row.cells.map((cell) => (
+                      <td class="num">
+                        {cell ? (
+                          <>
+                            <span class="range">{cell.range}</span>{" "}
+                            <span class={cell.pass ? "pass" : "fail"}>{cell.pass ? "통과" : "미달"}</span>
+                          </>
+                        ) : "—"}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                <tr>
+                  <th scope="row">통과 수</th>
+                  <td class="num"></td>
+                  {analysis.options.map((opt) => (
+                    <td class="num"><b>{opt.passCount}/{opt.conditions.length}</b></td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="option-block">
+          <h3>당첨번호 통계 vs 추천 세트 평균</h3>
+          <p class="chart-note">안별 평균은 그 안의 추천 세트 전체를 평균한 값이다.</p>
+          <div class="table-scroll">
+            <table class="screen-table">
+              <thead>
+                <tr>
+                  <th>항목</th>
+                  <th style="text-align:right">당첨번호</th>
+                  <th style="text-align:right">1안 평균</th>
+                  <th style="text-align:right">2안 평균</th>
+                  <th style="text-align:right">3안 평균</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analysis.statRows.map((row) => (
+                  <tr>
+                    <th scope="row">{row.label}</th>
+                    <td class="num">{row.winning}</td>
+                    {row.averages.map((avg) => <td class="num">{avg}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <p class="chart-note">※ 지난 결과를 돌아본 것이며 다음 회차의 당첨 가능성과는 관계가 없다.</p>
+      </>
+    ) : (
+      <p class="chart-note">{nextRound}회차는 아직 추첨 전입니다. 추첨 결과가 반영되면 당첨번호와 분석이 여기에 표시됩니다.</p>
+    )}
   </section>
 
   <div class="disclaimer">
