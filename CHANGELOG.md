@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/2dast/lotto/compare/v1.3.0...v1.4.0) (2026-11-16)
+
+
+### Features
+
+* **rules:** 최근 N회차 번호를 한 세트에 최대 M개로 제한하는 recent_max 추가 ([0d905f1](https://github.com/2dast/lotto/commit/0d905f1be1401bd9f2765c25eb43b6aa1f1cfad9))
+* **rules:** 최근 N회차 번호를 한 세트에 최대 M개로 제한하는 recent_max 추가 ([3492c29](https://github.com/2dast/lotto/commit/3492c29165bee2abff2c8891b67098761e1e8da1))
+
 ## [1.3.0](https://github.com/2dast/lotto/compare/v1.2.2...v1.3.0) (2026-11-14)
 
 
