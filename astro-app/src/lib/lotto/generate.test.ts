@@ -37,6 +37,7 @@ const basicFilters: PatternFilters = {
   max_consecutive: 3,
   sum_range: [100, 150],
   zones: [],
+  recent_limit: null,
 };
 
 describe("generateCombo", () => {
@@ -83,6 +84,7 @@ describe("generateCombo", () => {
       max_consecutive: 6,
       sum_range: [0, 300],
       zones: [],
+      recent_limit: null,
     };
     const combo = generateCombo(ALL_NUMBERS, uniformScores, impossible, new Set(), new Set(), 50);
     expect(combo).toBeNull();

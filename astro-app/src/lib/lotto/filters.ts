@@ -1,6 +1,20 @@
 import type { PatternFilters } from "./rules";
 
-export function passesFilters(combo: number[], filters: PatternFilters): boolean {
+// 최근 window회차(draws는 회차 오름차순)에 나온 번호 집합.
+export function recentNumberSet(draws: { numbers: number[] }[], window: number): Set<number> {
+  return new Set(draws.slice(-window).flatMap((d) => d.numbers));
+}
+
+export function passesFilters(
+  combo: number[],
+  filters: PatternFilters,
+  recentNumbers?: ReadonlySet<number>,
+): boolean {
+  if (filters.recent_limit && recentNumbers) {
+    const recentCount = combo.filter((n) => recentNumbers.has(n)).length;
+    if (recentCount > filters.recent_limit.max) return false;
+  }
+
   const oddCount = combo.filter((n) => n % 2 === 1).length;
   const [lo, hi] = filters.odd_even_ratio;
   if (!(lo <= oddCount && oddCount <= hi)) return false;

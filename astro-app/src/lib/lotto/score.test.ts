@@ -17,6 +17,7 @@ function makeRules(overrides: Partial<Rules["frequency"]> = {}): Rules {
       max_consecutive: 6,
       sum_range: [21, 255],
       zones: [],
+      recent_limit: null,
     },
     num_predictions: 5,
     exclude_numbers: [],

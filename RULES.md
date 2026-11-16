@@ -12,6 +12,7 @@ zone 10 19 min 0 max 3     # 10~19번대는 0~3개
 zone 20 29 min 0 max 3     # 20~29번대는 0~3개
 zone 30 39 min 0 max 3     # 30~39번대는 0~3개
 zone 40 45 min 1 max 2     # 40~45번대는 1~2개 (통계적 근거는 약함(30회차 기준 전체와 큰 차이 없음) — 개인 취향으로 유지)
+recent_max 5 3             # 최근 5회차에 나온 번호는 한 세트에 최대 3개까지
 predictions 5              # 예측 세트 5개 생성
 freq_all_weight 0.4        # 전체 출현 빈도 반영 비중 40% (백테스트 결과 실제 확률과 무관, 취향 반영용)
 freq_recent_weight 0.6     # 최근 회차 출현 빈도 반영 비중 60% (백테스트 결과 실제 확률과 무관, 취향 반영용)
@@ -26,6 +27,7 @@ freq_recent_window 20      # "최근"의 기준 = 최근 20회차
 | `sum` | `sum <최소> <최대>` | 6개 번호 합계 허용 범위 |
 | `consecutive_max` | `consecutive_max <n>` | 연속번호 최대 허용 개수 |
 | `zone` | `zone <시작> <끝> min <최소개수> max <최대개수>` | 특정 구간에서 뽑을 개수 강제 (min=max면 정확히 그 개수) |
+| `recent_max` | `recent_max <회차수> <최대개수>` | 최근 N회차에 나온 번호가 한 세트에 들어갈 수 있는 최대 개수 (예: `5 3` = 최근 5회차 번호 최대 3개) |
 | `predictions` | `predictions <n>` | 생성할 예측 세트 수 |
 | `freq_all_weight` | `freq_all_weight <0~1>` | 전체 출현 빈도 가중치 |
 | `freq_recent_weight` | `freq_recent_weight <0~1>` | 최근 출현 빈도 가중치 |

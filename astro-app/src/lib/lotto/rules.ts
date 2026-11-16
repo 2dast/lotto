@@ -16,6 +16,8 @@ export interface PatternFilters {
   max_consecutive: number;
   sum_range: [number, number];
   zones: Zone[];
+  // 한 세트에 "최근 window회차에 나온 번호"가 max개를 넘지 못하게 한다. null이면 제한 없음.
+  recent_limit: { window: number; max: number } | null;
 }
 
 export interface Frequency {
@@ -75,6 +77,7 @@ export function parseRuleLines(lines: string[]): Rules {
       max_consecutive: 6,
       sum_range: [21, 255],
       zones: [],
+      recent_limit: null,
     },
     num_predictions: 5,
     exclude_numbers: [],
@@ -104,6 +107,18 @@ export function parseRuleLines(lines: string[]): Rules {
           min,
           max,
         });
+        break;
+      }
+      case "recent_max": {
+        const window = toInt(tokens[1], keyword);
+        const max = toInt(tokens[2], keyword);
+        if (window < 1) {
+          throw new Error(`${keyword}: 회차 수는 1 이상이어야 합니다 (${window})`);
+        }
+        if (max < 0 || max > 6) {
+          throw new Error(`${keyword}: 최대 개수는 0~6이어야 합니다 (${max})`);
+        }
+        rules.pattern_filters.recent_limit = { window, max };
         break;
       }
       case "predictions":

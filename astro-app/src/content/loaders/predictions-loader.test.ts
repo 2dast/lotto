@@ -43,6 +43,21 @@ describe("generateOption", () => {
   });
 });
 
+describe("generateOption: recent_max", () => {
+  it("keeps every set within the recent_max limit for all three rule files", () => {
+    const draws = makeDraws(60);
+    const recent = new Set(draws.slice(-5).flatMap((d) => d.numbers));
+    for (const rulesPath of [REAL_RULES_PATH, REAL_RULES_2_PATH, REAL_RULES_3_PATH]) {
+      for (let i = 0; i < 20; i++) {
+        const result = generateOption(rulesPath, draws)!;
+        for (const combo of result.predictions) {
+          expect(combo.filter((n) => recent.has(n)).length, `${rulesPath} ${combo}`).toBeLessThanOrEqual(3);
+        }
+      }
+    }
+  });
+});
+
 describe("generateAndSavePredictions", () => {
   function tempDir(): string {
     return mkdtempSync(path.join(tmpdir(), "predictions-test-"));

@@ -32,6 +32,17 @@ describe("loadRules", () => {
     expect(rules2.pattern_filters.zones).toContainEqual({ range: [40, 45], min: 0, max: 0 });
   });
 
+  it("applies recent_max to all of RULES.md, RULES_2.md and RULES_3.md", () => {
+    for (const file of ["RULES.md", "RULES_2.md", "RULES_3.md"]) {
+      const rules = loadRules(path.resolve(path.dirname(RULES_PATH), file));
+      expect(rules.pattern_filters.recent_limit, file).toEqual({ window: 5, max: 3 });
+    }
+  });
+
+  it("defaults recent_limit to null when recent_max is absent", () => {
+    expect(parseRuleLines([]).pattern_filters.recent_limit).toBeNull();
+  });
+
   it("throws on unknown keyword", () => {
     expect(() => parseRuleLines(["not_a_real_keyword 1 2"])).toThrow();
   });
@@ -65,6 +76,13 @@ describe("parseRuleLines validation", () => {
   it("throws when exclude leaves fewer than 6 candidates", () => {
     const nums = Array.from({ length: 40 }, (_, i) => i + 1).join(" ");
     expect(() => parseRuleLines([`exclude ${nums}`])).toThrow(/exclude/);
+  });
+
+  it("throws when recent_max has an invalid window or max", () => {
+    expect(() => parseRuleLines(["recent_max 5"])).toThrow(/recent_max/);
+    expect(() => parseRuleLines(["recent_max 0 3"])).toThrow(/recent_max/);
+    expect(() => parseRuleLines(["recent_max 5 7"])).toThrow(/recent_max/);
+    expect(() => parseRuleLines(["recent_max 5 -1"])).toThrow(/recent_max/);
   });
 
   it("throws when freq_recent_window is less than 1", () => {
