@@ -3,6 +3,7 @@ import path from "node:path";
 import { loadRules } from "../../lib/lotto/rules";
 import { scoreNumbers, type Draw } from "../../lib/lotto/score";
 import { generatePredictions } from "../../lib/lotto/generate";
+import { recentNumberSet } from "../../lib/lotto/filters";
 
 export interface PredictionOption {
   predictions: number[][];
@@ -22,7 +23,9 @@ export function generateOption(rulesPath: string, draws: Draw[]): PredictionOpti
   }
   const rules = loadRules(rulesPath);
   const scores = scoreNumbers(draws, rules);
-  const predictions = generatePredictions(rules, scores);
+  const recentLimit = rules.pattern_filters.recent_limit;
+  const recentNumbers = recentLimit ? recentNumberSet(draws, recentLimit.window) : undefined;
+  const predictions = generatePredictions(rules, scores, recentNumbers);
   // 조건이 너무 엄격하면 세트가 모자라거나 비어도 조용히 저장·배포되므로 여기서 막는다.
   if (predictions.length < rules.num_predictions) {
     throw new Error(

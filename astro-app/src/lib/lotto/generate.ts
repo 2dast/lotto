@@ -31,6 +31,7 @@ export function generateCombo(
   exclude: Set<number>,
   include: Set<number>,
   maxAttempts = 2000,
+  recentNumbers?: ReadonlySet<number>,
 ): number[] | null {
   const candidates = pool.filter((n) => !exclude.has(n));
   for (let i = 0; i < maxAttempts; i++) {
@@ -40,14 +41,18 @@ export function generateCombo(
       combo.add(n);
     }
     const sorted = [...combo].sort((a, b) => a - b);
-    if (passesFilters(sorted, filters)) {
+    if (passesFilters(sorted, filters, recentNumbers)) {
       return sorted;
     }
   }
   return null;
 }
 
-export function generatePredictions(rules: Rules, scores: Record<number, number>): number[][] {
+export function generatePredictions(
+  rules: Rules,
+  scores: Record<number, number>,
+  recentNumbers?: ReadonlySet<number>,
+): number[][] {
   const filters = rules.pattern_filters;
   const exclude = new Set(rules.exclude_numbers ?? []);
   const include = new Set(rules.include_numbers ?? []);
@@ -60,7 +65,7 @@ export function generatePredictions(rules: Rules, scores: Record<number, number>
   let attempts = 0;
   while (predictions.length < numPredictions && attempts < numPredictions * 500) {
     attempts += 1;
-    const combo = generateCombo(pool, scores, filters, exclude, include);
+    const combo = generateCombo(pool, scores, filters, exclude, include, undefined, recentNumbers);
     // 2000번 시도하고도 필터를 못 통과했다면 조건이 사실상 불가능하다 — 계속 돌려봐야 빌드만 길어진다.
     if (combo === null) break;
     const key = combo.join(",");
